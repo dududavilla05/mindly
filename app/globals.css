@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --mindly-primary: #7c1fff;
+  --mindly-dark: #0f0a1e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0f0a1e;
+  color: #ffffff;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1a1030;
+}
+::-webkit-scrollbar-thumb {
+  background: #7c1fff;
+  border-radius: 3px;
+}
+
+/* Glow utilities */
+.glow-purple {
+  box-shadow: 0 0 20px rgba(124, 31, 255, 0.4), 0 0 60px rgba(124, 31, 255, 0.1);
+}
+
+.glow-purple-sm {
+  box-shadow: 0 0 10px rgba(124, 31, 255, 0.3);
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(139, 61, 255, 0.8);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #c39dff 0%, #7c1fff 50%, #a66aff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(124, 31, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+/* Gradient border */
+.gradient-border {
+  position: relative;
+  background: linear-gradient(#1a1030, #1a1030) padding-box,
+              linear-gradient(135deg, #7c1fff, #c39dff, #7c1fff) border-box;
+  border: 1px solid transparent;
+}
+
+/* Orb background */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
