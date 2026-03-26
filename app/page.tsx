@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import HomeScreen from "@/components/HomeScreen";
 import LessonScreen from "@/components/LessonScreen";
 import type { LessonContent } from "@/types/lesson";
-import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import type { SupabaseClientType } from "@/lib/supabase/client";
 
 type AppScreen = "home" | "lesson";
 
@@ -19,13 +19,16 @@ export default function Home() {
   const [screen, setScreen] = useState<AppScreen>("home");
   const [currentLesson, setCurrentLesson] = useState<LessonContent | null>(null);
   const [currentSubject, setCurrentSubject] = useState("");
-  const [user, setUser] = useState<User | null | undefined>(undefined); // undefined = carregando
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // Supabase client vive apenas no cliente — nunca durante SSR
+  const supabaseRef = useRef<SupabaseClientType | null>(null);
 
-  const supabase = createClient();
+  const fetchProfile = useCallback(async (userId: string) => {
+    const sb = supabaseRef.current;
+    if (!sb) return;
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data } = await sb
       .from("profiles")
       .select("plan, lessons_today, last_lesson_date")
       .eq("id", userId)
@@ -33,29 +36,42 @@ export default function Home() {
 
     if (data) {
       const today = new Date().toISOString().split("T")[0];
-      // Resetar contador localmente se mudou o dia
       if (data.last_lesson_date !== today) {
         setProfile({ plan: data.plan, lessons_today: 0, last_lesson_date: today });
       } else {
         setProfile(data as UserProfile);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // Inicializa o Supabase apenas no browser — evita erro de hidratação
+    let client: SupabaseClientType;
+    try {
+      const { createClient } = require("@/lib/supabase/client");
+      const result = createClient();
+      if (!result) {
+        setUser(null);
+        return;
+      }
+      client = result;
+    } catch {
+      setUser(null);
+      return;
+    }
+    supabaseRef.current = client;
+
     let ready = false;
 
-    // getUser() é a fonte de verdade inicial (valida o token no servidor)
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    client.auth.getUser().then(({ data: { user } }) => {
       ready = true;
       setUser(user);
       if (user) fetchProfile(user.id);
     });
 
-    // onAuthStateChange cuida de login/logout APÓS a inicialização
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Ignorar eventos que chegam antes do getUser() resolver
-      // para evitar flicker undefined → null → User
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
       if (!ready) return;
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -66,8 +82,7 @@ export default function Home() {
     });
 
     return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchProfile]);
 
   const handleLessonGenerated = (
     lesson: LessonContent,
@@ -79,7 +94,6 @@ export default function Home() {
     setScreen("lesson");
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Atualizar contador local
     if (profile && newLessonsToday !== undefined) {
       setProfile({ ...profile, lessons_today: newLessonsToday });
     }

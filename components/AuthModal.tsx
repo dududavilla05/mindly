@@ -29,6 +29,18 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
 
+  if (!supabase) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative w-full max-w-md rounded-3xl p-8 text-center" style={{ background: "rgba(12,8,25,0.98)", border: "1px solid rgba(124,31,255,0.35)" }}>
+          <p className="text-red-400 text-sm">Autenticação não configurada. Verifique as variáveis de ambiente.</p>
+          <button onClick={onClose} className="mt-4 text-[#a78bca] text-sm hover:text-white">Fechar</button>
+        </div>
+      </div>
+    );
+  }
+
   const handleEmailAuth = async () => {
     if (!email.trim() || !password.trim()) {
       setError("Preencha e-mail e senha.");

@@ -33,7 +33,7 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
   const supabase = createClient();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    if (supabase) await supabase.auth.signOut();
     onSignOut();
     setOpen(false);
   };
