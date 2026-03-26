@@ -3,10 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { GenerateLessonRequest } from "@/types/lesson";
 import { createClient } from "@/lib/supabase/server";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 const SYSTEM_PROMPT = `Você é o Mindly, um professor especialista em criar lições curtas, envolventes e práticas sobre qualquer assunto.
 
 Seu objetivo é tornar o aprendizado fácil e imediato. Sempre responda em português brasileiro com linguagem clara, direta e inspiradora.
@@ -45,6 +41,17 @@ const FREE_PLAN_LIMIT = 10;
 
 export async function POST(request: NextRequest) {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      console.error("ANTHROPIC_API_KEY is not set");
+      return NextResponse.json(
+        { error: "Serviço de IA não configurado. Contate o suporte." },
+        { status: 503 }
+      );
+    }
+
+    const client = new Anthropic({ apiKey });
+
     const body: GenerateLessonRequest = await request.json();
     const { subject, imageBase64, imageMimeType } = body;
 
@@ -56,12 +63,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar autenticação e limites
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
+    try {
+      supabase = await createClient();
+    } catch {
+      // Supabase not configured — skip auth/limits
+    }
 
+    const user = supabase ? (await supabase.auth.getUser()).data.user : null;
     let userProfile: { plan: string; lessons_today: number; last_lesson_date: string } | null = null;
 
-    if (user) {
+    if (user && supabase) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("plan, lessons_today, last_lesson_date")
@@ -140,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Salvar histórico e atualizar contador (usuários autenticados)
-    if (user && userProfile) {
+    if (user && userProfile && supabase) {
       const today = new Date().toISOString().split("T")[0];
 
       await Promise.all([
@@ -168,8 +180,20 @@ export async function POST(request: NextRequest) {
     console.error("Error generating lesson:", error);
 
     if (error instanceof Anthropic.APIError) {
+      if (error.status === 401) {
+        return NextResponse.json(
+          { error: "Chave da API não configurada corretamente. Contate o suporte." },
+          { status: 500 }
+        );
+      }
+      if (error.status === 529 || error.status === 503) {
+        return NextResponse.json(
+          { error: "Serviço temporariamente sobrecarregado. Tente novamente em instantes." },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
-        { error: `Erro na API: ${error.message}` },
+        { error: "Erro ao chamar a IA. Tente novamente." },
         { status: error.status || 500 }
       );
     }
