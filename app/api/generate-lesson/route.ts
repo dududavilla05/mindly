@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import type { GenerateLessonRequest } from "@/types/lesson";
+import { createClient } from "@/lib/supabase/server";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -40,6 +41,8 @@ Regras:
 - Cada ação em howToApplyToday deve ser ultra-específica e realizável hoje
 - O highlight deve ser a ideia mais poderosa da lição`;
 
+const FREE_PLAN_LIMIT = 10;
+
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateLessonRequest = await request.json();
@@ -52,28 +55,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    type MessageParam = Anthropic.Messages.MessageParam;
-    type ContentBlockParam = Anthropic.Messages.ContentBlockParam;
+    // Verificar autenticação e limites
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
+    let userProfile: { plan: string; lessons_today: number; last_lesson_date: string } | null = null;
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("plan, lessons_today, last_lesson_date")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        const today = new Date().toISOString().split("T")[0];
+
+        // Resetar contador se mudou o dia
+        if (profile.last_lesson_date !== today) {
+          await supabase
+            .from("profiles")
+            .update({ lessons_today: 0, last_lesson_date: today })
+            .eq("id", user.id);
+          userProfile = { ...profile, lessons_today: 0, last_lesson_date: today };
+        } else {
+          userProfile = profile;
+        }
+
+        // Verificar limite do plano grátis
+        if (userProfile.plan === "gratis" && userProfile.lessons_today >= FREE_PLAN_LIMIT) {
+          return NextResponse.json(
+            { error: "limite_atingido", lessonsToday: userProfile.lessons_today },
+            { status: 429 }
+          );
+        }
+      }
+    }
+
+    // Montar conteúdo para a IA
+    type ContentBlockParam = Anthropic.Messages.ContentBlockParam;
     const userContent: ContentBlockParam[] = [];
 
     if (imageBase64 && imageMimeType) {
       const validMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
       type ImageMimeType = typeof validMimeTypes[number];
-
       const mimeType: ImageMimeType = validMimeTypes.includes(imageMimeType as ImageMimeType)
         ? (imageMimeType as ImageMimeType)
         : "image/jpeg";
 
       userContent.push({
         type: "image",
-        source: {
-          type: "base64",
-          media_type: mimeType,
-          data: imageBase64,
-        },
+        source: { type: "base64", media_type: mimeType, data: imageBase64 },
       });
-
       userContent.push({
         type: "text",
         text: subject
@@ -81,24 +114,14 @@ export async function POST(request: NextRequest) {
           : "Analise esta imagem e gere uma lição sobre o que ela representa ou contém.",
       });
     } else {
-      userContent.push({
-        type: "text",
-        text: `Gere uma lição sobre: ${subject}`,
-      });
+      userContent.push({ type: "text", text: `Gere uma lição sobre: ${subject}` });
     }
-
-    const messages: MessageParam[] = [
-      {
-        role: "user",
-        content: userContent,
-      },
-    ];
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
-      messages,
+      messages: [{ role: "user", content: userContent }],
     });
 
     const textContent = response.content.find((c) => c.type === "text");
@@ -116,7 +139,31 @@ export async function POST(request: NextRequest) {
       throw new Error("Erro ao processar resposta da IA");
     }
 
-    return NextResponse.json({ lesson: lessonData });
+    // Salvar histórico e atualizar contador (usuários autenticados)
+    if (user && userProfile) {
+      const today = new Date().toISOString().split("T")[0];
+
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .update({
+            lessons_today: (userProfile.lessons_today || 0) + 1,
+            last_lesson_date: today,
+          })
+          .eq("id", user.id),
+        supabase.from("lesson_history").insert({
+          user_id: user.id,
+          subject: subject?.trim() || "Imagem enviada",
+          lesson_data: lessonData,
+        }),
+      ]);
+    }
+
+    return NextResponse.json({
+      lesson: lessonData,
+      lessonsToday: userProfile ? userProfile.lessons_today + 1 : null,
+      plan: userProfile?.plan ?? null,
+    });
   } catch (error) {
     console.error("Error generating lesson:", error);
 

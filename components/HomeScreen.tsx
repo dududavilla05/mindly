@@ -3,7 +3,12 @@
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import MindlyLogo from "./MindlyLogo";
+import AuthModal from "./AuthModal";
+import UpgradeModal from "./UpgradeModal";
+import UserMenu from "./UserMenu";
 import type { LessonContent } from "@/types/lesson";
+import type { User } from "@supabase/supabase-js";
+import type { UserProfile } from "@/app/page";
 
 const SUGGESTIONS = [
   { label: "Juros compostos", emoji: "📈" },
@@ -14,16 +19,26 @@ const SUGGESTIONS = [
 ];
 
 interface HomeScreenProps {
-  onLessonGenerated: (lesson: LessonContent, subject: string) => void;
+  onLessonGenerated: (lesson: LessonContent, subject: string, lessonsToday?: number) => void;
+  user: User | null | undefined;
+  profile: UserProfile | null;
+  onSignOut: () => void;
 }
 
-export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
+export default function HomeScreen({
+  onLessonGenerated,
+  user,
+  profile,
+  onSignOut,
+}: HomeScreenProps) {
   const [subject, setSubject] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageFile = useCallback((file: File) => {
@@ -33,9 +48,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
     }
     setImageFile(file);
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
+    reader.onloadend = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
     setError(null);
   }, []);
@@ -83,8 +96,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
         imageBase64 = await new Promise<string>((resolve, reject) => {
           reader.onloadend = () => {
             const result = reader.result as string;
-            const base64 = result.split(",")[1];
-            resolve(base64);
+            resolve(result.split(",")[1]);
           };
           reader.onerror = reject;
           reader.readAsDataURL(imageFile);
@@ -104,11 +116,21 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
 
       const data = await response.json();
 
+      // Limite diário atingido
+      if (response.status === 429 && data.error === "limite_atingido") {
+        setShowUpgradeModal(true);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.error || "Erro ao gerar lição.");
       }
 
-      onLessonGenerated(data.lesson, subject.trim() || "Imagem enviada");
+      onLessonGenerated(
+        data.lesson,
+        subject.trim() || "Imagem enviada",
+        data.lessonsToday ?? undefined
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocorreu um erro inesperado.");
     } finally {
@@ -117,6 +139,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
   };
 
   const canGenerate = (subject.trim().length > 0 || !!imageFile) && !loading;
+  const authReady = user !== undefined;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12 overflow-hidden">
@@ -134,7 +157,31 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
         style={{ background: "radial-gradient(circle, #c39dff 0%, transparent 70%)" }}
       />
 
-      {/* Content */}
+      {/* Barra de navegação (auth) */}
+      {authReady && (
+        <div className="fixed top-4 right-4 z-30 animate-fade-in">
+          {user ? (
+            <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
+          ) : (
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+              style={{
+                background: "rgba(124,31,255,0.12)",
+                border: "1px solid rgba(124,31,255,0.25)",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Entrar
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Conteúdo principal */}
       <div className="relative z-10 w-full max-w-2xl flex flex-col items-center gap-8">
         {/* Logo + tagline */}
         <div className="flex flex-col items-center gap-3 animate-fade-in">
@@ -144,7 +191,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
           </p>
         </div>
 
-        {/* Main card */}
+        {/* Card principal */}
         <div
           className="w-full rounded-3xl p-6 sm:p-8 flex flex-col gap-6 animate-slide-up"
           style={{
@@ -154,7 +201,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
             boxShadow: "0 8px 40px rgba(124, 31, 255, 0.15)",
           }}
         >
-          {/* Text input */}
+          {/* Input de texto */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-[#c39dff] uppercase tracking-widest">
               O que você quer aprender?
@@ -162,10 +209,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
             <div className="relative">
               <textarea
                 value={subject}
-                onChange={(e) => {
-                  setSubject(e.target.value);
-                  setError(null);
-                }}
+                onChange={(e) => { setSubject(e.target.value); setError(null); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -192,14 +236,14 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
             </div>
           </div>
 
-          {/* Divider */}
+          {/* Divisor */}
           <div className="flex items-center gap-4">
             <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#3d1f6e] to-transparent" />
             <span className="text-xs text-[#5c3d8a] font-medium uppercase tracking-widest">ou</span>
             <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#3d1f6e] to-transparent" />
           </div>
 
-          {/* Image upload */}
+          {/* Upload de imagem */}
           {imagePreview ? (
             <div className="relative rounded-2xl overflow-hidden group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -272,7 +316,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
             </div>
           )}
 
-          {/* Error message */}
+          {/* Mensagem de erro */}
           {error && (
             <div
               className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-red-300"
@@ -287,7 +331,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
             </div>
           )}
 
-          {/* Generate button */}
+          {/* Botão gerar */}
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
@@ -307,15 +351,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
           >
             {loading ? (
               <span className="flex items-center justify-center gap-3">
-                <svg
-                  className="animate-spin"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
+                <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
                   <path d="M12 3a9 9 0 019 9" />
                 </svg>
@@ -332,7 +368,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
           </button>
         </div>
 
-        {/* Suggestion chips */}
+        {/* Sugestões */}
         <div className="flex flex-col items-center gap-3 w-full animate-fade-in">
           <p className="text-xs text-[#5c3d8a] uppercase tracking-widest font-semibold">
             Sugestões populares
@@ -343,9 +379,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
                 key={label}
                 onClick={() => handleSuggestionClick(label)}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 hover:scale-105 active:scale-95 ${
-                  subject === label
-                    ? "text-white"
-                    : "text-[#c39dff] hover:text-white"
+                  subject === label ? "text-white" : "text-[#c39dff] hover:text-white"
                 }`}
                 style={
                   subject === label
@@ -366,7 +400,7 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Rodapé */}
         <div className="flex flex-col items-center gap-2">
           <Link
             href="/planos"
@@ -381,11 +415,30 @@ export default function HomeScreen({ onLessonGenerated }: HomeScreenProps) {
             </svg>
             Ver planos
           </Link>
+          {!user && authReady && (
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="text-xs text-[#4a3870] hover:text-[#a78bca] transition-colors"
+            >
+              Salve seu histórico · Crie sua conta grátis
+            </button>
+          )}
           <p className="text-xs text-[#3d1f6e] text-center">
             Powered by Claude AI · Lições personalizadas em segundos
           </p>
         </div>
       </div>
+
+      {/* Modais */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => setShowAuthModal(false)}
+        />
+      )}
+      {showUpgradeModal && (
+        <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
+      )}
     </div>
   );
 }
