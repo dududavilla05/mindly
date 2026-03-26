@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import MindlyLogo from "./MindlyLogo";
 import AuthModal from "./AuthModal";
@@ -40,6 +40,11 @@ export default function HomeScreen({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fechar modal automaticamente quando auth for resolvida (OAuth redirect ou popup)
+  useEffect(() => {
+    if (user) setShowAuthModal(false);
+  }, [user]);
 
   const handleImageFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {

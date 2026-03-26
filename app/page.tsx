@@ -43,14 +43,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Sessão inicial
+    let ready = false;
+
+    // getUser() é a fonte de verdade inicial (valida o token no servidor)
     supabase.auth.getUser().then(({ data: { user } }) => {
+      ready = true;
       setUser(user);
       if (user) fetchProfile(user.id);
     });
 
-    // Ouvir mudanças de auth
+    // onAuthStateChange cuida de login/logout APÓS a inicialização
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Ignorar eventos que chegam antes do getUser() resolver
+      // para evitar flicker undefined → null → User
+      if (!ready) return;
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
