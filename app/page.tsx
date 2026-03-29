@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import HomeScreen from "@/components/HomeScreen";
+import dynamic from "next/dynamic";
 import LessonScreen from "@/components/LessonScreen";
+
+// ssr: false elimina completamente a possibilidade de mismatch de hidratação.
+// HomeScreen depende de auth/Supabase e nunca se beneficia de SSR.
+const HomeScreen = dynamic(() => import("@/components/HomeScreen"), { ssr: false });
 import type { LessonContent } from "@/types/lesson";
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClientType } from "@/lib/supabase/client";

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mindly-v1';
+const CACHE_NAME = 'mindly-v2';
 
 // Assets to cache on install (app shell)
 const STATIC_ASSETS = [
@@ -63,7 +63,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (_next/static, icons, fonts): cache-first
+  // JS/CSS chunks do Next.js: network-first (hashes mudam a cada build,
+  // cache-first causava servir bundles antigos → erros de hidratação)
+  if (url.pathname.startsWith('/_next/static/chunks/') ||
+      url.pathname.startsWith('/_next/static/css/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Demais assets estáticos (ícones, fontes, manifesto): cache-first
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/icons/') ||
