@@ -147,20 +147,22 @@ export default function HomeScreen({
   const authReady = user !== undefined;
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12 overflow-hidden">
-      {/* Background orbs */}
-      <div
-        className="orb w-96 h-96 top-[-100px] left-[-150px] opacity-30"
-        style={{ background: "radial-gradient(circle, #7c1fff 0%, transparent 70%)" }}
-      />
-      <div
-        className="orb w-80 h-80 bottom-[-80px] right-[-100px] opacity-20"
-        style={{ background: "radial-gradient(circle, #a66aff 0%, transparent 70%)" }}
-      />
-      <div
-        className="orb w-64 h-64 top-1/3 right-1/4 opacity-10"
-        style={{ background: "radial-gradient(circle, #c39dff 0%, transparent 70%)" }}
-      />
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      {/* Background orbs — isolados para não quebrar position:fixed em Safari/iOS */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="orb w-96 h-96 top-[-100px] left-[-150px] opacity-30"
+          style={{ background: "radial-gradient(circle, #7c1fff 0%, transparent 70%)" }}
+        />
+        <div
+          className="orb w-80 h-80 bottom-[-80px] right-[-100px] opacity-20"
+          style={{ background: "radial-gradient(circle, #a66aff 0%, transparent 70%)" }}
+        />
+        <div
+          className="orb w-64 h-64 top-1/3 right-1/4 opacity-10"
+          style={{ background: "radial-gradient(circle, #c39dff 0%, transparent 70%)" }}
+        />
+      </div>
 
       {/* Barra de navegação (auth) */}
       {authReady && (

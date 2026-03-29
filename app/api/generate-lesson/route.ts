@@ -41,7 +41,7 @@ const FREE_PLAN_LIMIT = 10;
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
     if (!apiKey) {
       console.error("ANTHROPIC_API_KEY is not set");
       return NextResponse.json(
