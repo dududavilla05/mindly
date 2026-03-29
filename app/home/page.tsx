@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import dynamic from "next/dynamic";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import LessonScreen from "@/components/LessonScreen";
+import HomeScreen from "@/components/HomeScreen";
 import Sidebar from "@/components/Sidebar";
 import { useHistory } from "@/hooks/useHistory";
 import type { LessonContent } from "@/types/lesson";
 import type { UserProfile } from "@/app/page";
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClientType } from "@/lib/supabase/client";
-
-const HomeScreen = dynamic(() => import("@/components/HomeScreen"), { ssr: false });
 
 type AppScreen = "home" | "lesson";
 
@@ -23,6 +21,7 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
+  const ready = useRef(false);
 
   const { history, loading: historyLoading } = useHistory(supabase, user?.id);
 
@@ -62,20 +61,23 @@ export default function HomePage() {
     setSupabase(client);
 
     client.auth.getUser().then(({ data: { user: currentUser } }) => {
+      ready.current = true;
       if (!currentUser) { router.replace("/login"); return; }
       setUser(currentUser);
       fetchProfile(currentUser.id, client);
     });
 
     const { data: { subscription } } = client.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        // Ignora eventos anteriores ao getUser() para evitar redirect prematuro
+        if (!ready.current) return;
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         if (currentUser) {
           fetchProfile(currentUser.id, client);
-        } else {
+        } else if (event === "SIGNED_OUT") {
           setProfile(null);
-          router.replace("/login");
+          router.replace("/");
         }
       }
     );
