@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import MindlyLogo from "./MindlyLogo";
 import AuthModal from "./AuthModal";
@@ -39,7 +40,13 @@ export default function HomeScreen({
   const [dragOver, setDragOver] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Garantir que o portal e conteúdo dependente de auth só renderizam no cliente
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fechar modal automaticamente quando auth for resolvida (OAuth redirect ou popup)
   useEffect(() => {
@@ -147,7 +154,10 @@ export default function HomeScreen({
   const authReady = user !== undefined;
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <div
+      suppressHydrationWarning
+      className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12"
+    >
       {/* Background orbs — isolados para não quebrar position:fixed em Safari/iOS */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
@@ -164,9 +174,9 @@ export default function HomeScreen({
         />
       </div>
 
-      {/* Barra de navegação (auth) */}
-      {authReady && (
-        <div className="fixed top-4 right-4 z-30 animate-fade-in">
+      {/* Barra de navegação — portal garante position:fixed real fora de qualquer container */}
+      {mounted && authReady && createPortal(
+        <div className="fixed top-4 right-4 z-[9999] animate-fade-in">
           {user ? (
             <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
           ) : (
@@ -185,7 +195,8 @@ export default function HomeScreen({
               Entrar
             </button>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Conteúdo principal */}
