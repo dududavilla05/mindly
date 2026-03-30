@@ -1,46 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Background -->
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#7c1fff"/>
-      <stop offset="100%" style="stop-color:#a66aff"/>
-    </linearGradient>
-    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15"/>
-      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Rounded square background -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect width="512" height="512" rx="112" fill="url(#shine)"/>
-
-  <!-- Brain icon (simplified, centered) -->
-  <!-- Left hemisphere -->
-  <path d="M200 160 C160 160 128 190 128 228 C128 248 136 266 150 278
-           C138 290 130 308 130 328 C130 366 158 396 194 400
-           L200 400 L200 340 C186 336 176 322 176 306 C176 290 186 276 200 272
-           L200 160Z"
-        fill="white" opacity="0.92"/>
-
-  <!-- Right hemisphere -->
-  <path d="M312 160 C352 160 384 190 384 228 C384 248 376 266 362 278
-           C374 290 382 308 382 328 C382 366 354 396 318 400
-           L312 400 L312 340 C326 336 336 322 336 306 C336 290 326 276 312 272
-           L312 160Z"
-        fill="white" opacity="0.92"/>
-
-  <!-- Center bridge -->
-  <rect x="200" y="200" width="112" height="20" rx="10" fill="white" opacity="0.92"/>
-  <rect x="200" y="290" width="112" height="20" rx="10" fill="white" opacity="0.92"/>
-  <rect x="200" y="350" width="112" height="20" rx="10" fill="white" opacity="0.92"/>
-
-  <!-- Vertical center line (corpus callosum) -->
-  <rect x="248" y="160" width="16" height="240" rx="8" fill="white" opacity="0.3"/>
-
-  <!-- Spark / star accent -->
-  <path d="M390 120 L396 108 L402 120 L414 126 L402 132 L396 144 L390 132 L378 126 Z"
-        fill="white" opacity="0.9"/>
-  <path d="M116 380 L119 373 L122 380 L129 383 L122 386 L119 393 L116 386 L109 383 Z"
-        fill="white" opacity="0.6"/>
+<svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="260" height="260" rx="60" fill="#0A0A0A"/>
+  <rect x="0" y="0" width="260" height="260" rx="60" fill="none" stroke="#3B1C8C" stroke-width="3"/>
+  <path d="M124 180 C124 180 72 175 67 142 C62 112 79 88 98 83 C93 63 113 48 132 54 L132 180 Z" fill="#7C3AED"/>
+  <path d="M136 180 C136 180 188 175 193 142 C198 112 181 88 162 83 C167 63 147 48 128 54 L128 180 Z" fill="#7C3AED"/>
+  <rect x="126" y="54" width="8" height="126" rx="4" fill="#0A0A0A"/>
+  <path d="M74 142 C87 134 106 136 124 138" fill="none" stroke="#0A0A0A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M186 142 C173 134 154 136 136 138" fill="none" stroke="#0A0A0A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M84 162 C96 158 110 160 124 158" fill="none" stroke="#0A0A0A" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M176 162 C164 158 150 160 136 158" fill="none" stroke="#0A0A0A" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="67" cy="142" r="7" fill="#A78BFA"/>
+  <circle cx="193" cy="142" r="7" fill="#A78BFA"/>
+  <circle cx="130" cy="54" r="7" fill="#A78BFA"/>
+  <line x1="67" y1="142" x2="40" y2="142" stroke="#A78BFA" stroke-width="4" stroke-linecap="round"/>
+  <line x1="40" y1="142" x2="40" y2="110" stroke="#A78BFA" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="40" cy="110" r="6" fill="#A78BFA"/>
+  <line x1="193" y1="142" x2="220" y2="142" stroke="#A78BFA" stroke-width="4" stroke-linecap="round"/>
+  <line x1="220" y1="142" x2="220" y2="110" stroke="#A78BFA" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="220" cy="110" r="6" fill="#A78BFA"/>
+  <line x1="130" y1="54" x2="130" y2="30" stroke="#A78BFA" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="130" cy="30" r="6" fill="#A78BFA"/>
 </svg>

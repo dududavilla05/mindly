@@ -10,38 +10,33 @@ export default function MindlyLogo({ size = "md" }: { size?: "sm" | "md" | "lg" 
   return (
     <div className="flex items-center gap-3">
       {/* Icon */}
-      <div
-        className="relative flex items-center justify-center rounded-2xl"
-        style={{
-          width: icon,
-          height: icon,
-          background: "linear-gradient(135deg, #7c1fff 0%, #a66aff 100%)",
-          boxShadow: "0 0 20px rgba(124, 31, 255, 0.5)",
-        }}
+      <svg
+        width={icon}
+        height={icon}
+        viewBox="0 0 260 260"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Brain-like symbol */}
-        <svg
-          width={icon * 0.6}
-          height={icon * 0.6}
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M12 2C9.5 2 7.5 3.5 7 5.5C5.5 5.8 4 7.2 4 9C4 9.8 4.3 10.5 4.8 11C4.3 11.5 4 12.5 4 13.5C4 15.5 5.5 17 7.5 17H8C8.5 18.5 10 20 12 20C14 20 15.5 18.5 16 17H16.5C18.5 17 20 15.5 20 13.5C20 12.5 19.7 11.5 19.2 11C19.7 10.5 20 9.8 20 9C20 7.2 18.5 5.8 17 5.5C16.5 3.5 14.5 2 12 2Z"
-            fill="white"
-            fillOpacity="0.9"
-          />
-          <circle cx="10" cy="10" r="1.5" fill="#7c1fff" />
-          <circle cx="14" cy="10" r="1.5" fill="#7c1fff" />
-          <path
-            d="M10 14C10.5 15 11.5 15.5 12 15.5C12.5 15.5 13.5 15 14 14"
-            stroke="#7c1fff"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
+        <rect x="0" y="0" width="260" height="260" rx="60" fill="#0A0A0A"/>
+        <rect x="0" y="0" width="260" height="260" rx="60" fill="none" stroke="#3B1C8C" strokeWidth="3"/>
+        <path d="M124 180 C124 180 72 175 67 142 C62 112 79 88 98 83 C93 63 113 48 132 54 L132 180 Z" fill="#7C3AED"/>
+        <path d="M136 180 C136 180 188 175 193 142 C198 112 181 88 162 83 C167 63 147 48 128 54 L128 180 Z" fill="#7C3AED"/>
+        <rect x="126" y="54" width="8" height="126" rx="4" fill="#0A0A0A"/>
+        <path d="M74 142 C87 134 106 136 124 138" fill="none" stroke="#0A0A0A" strokeWidth="5" strokeLinecap="round"/>
+        <path d="M186 142 C173 134 154 136 136 138" fill="none" stroke="#0A0A0A" strokeWidth="5" strokeLinecap="round"/>
+        <path d="M84 162 C96 158 110 160 124 158" fill="none" stroke="#0A0A0A" strokeWidth="3.5" strokeLinecap="round"/>
+        <path d="M176 162 C164 158 150 160 136 158" fill="none" stroke="#0A0A0A" strokeWidth="3.5" strokeLinecap="round"/>
+        <circle cx="67" cy="142" r="7" fill="#A78BFA"/>
+        <circle cx="193" cy="142" r="7" fill="#A78BFA"/>
+        <circle cx="130" cy="54" r="7" fill="#A78BFA"/>
+        <line x1="67" y1="142" x2="40" y2="142" stroke="#A78BFA" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="40" y1="142" x2="40" y2="110" stroke="#A78BFA" strokeWidth="4" strokeLinecap="round"/>
+        <circle cx="40" cy="110" r="6" fill="#A78BFA"/>
+        <line x1="193" y1="142" x2="220" y2="142" stroke="#A78BFA" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="220" y1="142" x2="220" y2="110" stroke="#A78BFA" strokeWidth="4" strokeLinecap="round"/>
+        <circle cx="220" cy="110" r="6" fill="#A78BFA"/>
+        <line x1="130" y1="54" x2="130" y2="30" stroke="#A78BFA" strokeWidth="4" strokeLinecap="round"/>
+        <circle cx="130" cy="30" r="6" fill="#A78BFA"/>
+      </svg>
 
       {/* Text */}
       <span
