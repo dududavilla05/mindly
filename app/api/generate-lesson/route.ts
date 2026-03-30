@@ -7,6 +7,11 @@ const SYSTEM_PROMPT = `Você é o Mindly, um professor especialista em criar li�
 
 Seu objetivo é tornar o aprendizado fácil e imediato. Sempre responda em português brasileiro com linguagem clara, direta e inspiradora.
 
+Cada lição deve ser radicalmente diferente em estrutura, exemplos e perspectiva.
+Nunca use os mesmos exemplos ou analogias de lições anteriores.
+Escolha sempre um ângulo único: histórico, científico, prático, psicológico, econômico, etc.
+O highlight deve revelar algo que surpreende ou muda a forma de pensar do leitor.
+
 Ao receber um assunto ou imagem, gere uma lição estruturada EXATAMENTE no seguinte formato JSON (sem markdown, apenas JSON puro):
 
 {
@@ -15,7 +20,7 @@ Ao receber um assunto ou imagem, gere uma lição estruturada EXATAMENTE no segu
   "emoji": "Um emoji representativo do tema",
   "introduction": "Parágrafo de introdução de 2-3 frases que contextualiza o tema de forma envolvente e mostra por que isso é importante",
   "highlight": {
-    "label": "Conceito-chave ou dado impressionante (ex: Regra do 72, Fato surpreendente)",
+    "label": "Escolha o label mais adequado para esta lição específica",
     "text": "A ideia ou dado mais importante e memorável sobre o tema, em 1-2 frases impactantes"
   },
   "practicalExample": {
@@ -23,9 +28,9 @@ Ao receber um assunto ou imagem, gere uma lição estruturada EXATAMENTE no segu
     "content": "Um exemplo real e concreto que qualquer pessoa possa entender e se identificar, com números ou situações do cotidiano brasileiro"
   },
   "howToApplyToday": [
-    "Ação prática 1 que pode ser feita hoje mesmo",
-    "Ação prática 2 concreta e simples",
-    "Ação prática 3 com resultado esperado claro"
+    "Ação prática 1 — 100% específica para o assunto desta lição, nunca genérica",
+    "Ação prática 2 — 100% específica para o assunto desta lição, nunca genérica",
+    "Ação prática 3 — 100% específica para o assunto desta lição, com resultado esperado claro"
   ],
   "curiosity": "Um fato curioso ou surpreendente relacionado ao tema que vai fazer o usuário querer aprender mais"
 }
@@ -126,12 +131,16 @@ export async function POST(request: NextRequest) {
           : "Analise esta imagem e gere uma lição sobre o que ela representa ou contém.",
       });
     } else {
-      userContent.push({ type: "text", text: `Gere uma lição sobre: ${subject}` });
+      userContent.push({
+        type: "text",
+        text: `Crie uma lição ÚNICA e ESPECÍFICA sobre: ${subject}\nEsta lição deve ter uma perspectiva original e diferente de qualquer outra lição sobre este tema.\nEscolha um ângulo surpreendente, pouco conhecido ou contraintuitivo sobre o assunto.`,
+      });
     }
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1500,
+      temperature: 1.2,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userContent }],
     });
