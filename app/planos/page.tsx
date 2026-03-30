@@ -51,9 +51,9 @@ const PLANS: Plan[] = [
     id: "pro",
     name: "Mindly Pro",
     priceMonthly: "R$19",
-    priceAnnual: "R$26,99",
-    annualBilling: "R$323,88/ano",
-    savings: "30%",
+    priceAnnual: "R$13,99",
+    annualBilling: "R$167,88/ano",
+    savings: "26%",
     description: "Para quem quer aprender sem limites.",
     emoji: "⚡",
     priceId: "price_1TEzMKHOf5u0JlparVAelUij",
@@ -73,9 +73,9 @@ const PLANS: Plan[] = [
     id: "max",
     name: "Mindly Max",
     priceMonthly: "R$39",
-    priceAnnual: "R$48,99",
-    annualBilling: "R$587,88/ano",
-    savings: "30%",
+    priceAnnual: "R$27,99",
+    annualBilling: "R$335,88/ano",
+    savings: "28%",
     description: "A experiência completa de aprendizado com IA.",
     emoji: "🚀",
     priceId: "price_1TEzMtHOf5u0Jlpa95lqc8w8",
@@ -421,6 +421,11 @@ function PlanosContent() {
                   >
                     {plan.cta}
                   </Link>
+                )}
+                {plan.priceId && (
+                  <p className="text-center text-[11px] text-[#5c3d8a]">
+                    Cancele quando quiser, sem multa
+                  </p>
                 )}
               </div>
             );
