@@ -5,8 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import MindlyLogo from "@/components/MindlyLogo";
 import Link from "next/link";
 
-type Billing = "mensal" | "anual";
-
 interface PlanFeature {
   text: string;
   soon?: boolean;
@@ -15,10 +13,8 @@ interface PlanFeature {
 interface Plan {
   id: string;
   name: string;
-  priceMonthly: string;
-  priceAnnual: string | null;
+  price: string;
   annualBilling: string | null;
-  savings: string | null;
   description: string;
   emoji: string;
   priceId: string | null;
@@ -32,10 +28,8 @@ const PLANS: Plan[] = [
   {
     id: "free",
     name: "Grátis",
-    priceMonthly: "R$0",
-    priceAnnual: "R$0",
+    price: "R$0",
     annualBilling: null,
-    savings: null,
     description: "Comece a aprender hoje sem pagar nada.",
     emoji: "🌱",
     priceId: null,
@@ -50,10 +44,8 @@ const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Mindly Pro",
-    priceMonthly: "R$19",
-    priceAnnual: "R$13,99",
-    annualBilling: "R$167,88/ano",
-    savings: "26%",
+    price: "R$26,99",
+    annualBilling: "R$323,88/ano",
     description: "Para quem quer aprender sem limites.",
     emoji: "⚡",
     priceId: "price_1TEzMKHOf5u0JlparVAelUij",
@@ -72,10 +64,8 @@ const PLANS: Plan[] = [
   {
     id: "max",
     name: "Mindly Max",
-    priceMonthly: "R$39",
-    priceAnnual: "R$27,99",
-    annualBilling: "R$335,88/ano",
-    savings: "28%",
+    price: "R$48,99",
+    annualBilling: "R$587,88/ano",
     description: "A experiência completa de aprendizado com IA.",
     emoji: "🚀",
     priceId: "price_1TEzMtHOf5u0Jlpa95lqc8w8",
@@ -100,7 +90,6 @@ const PLANS: Plan[] = [
 function PlanosContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [billing, setBilling] = useState<Billing>("mensal");
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
@@ -180,9 +169,7 @@ function PlanosContent() {
             toast.type === "success" ? "text-emerald-300" : "text-red-300"
           }`}
           style={{
-            background: toast.type === "success"
-              ? "rgba(16,185,129,0.15)"
-              : "rgba(220,38,38,0.15)",
+            background: toast.type === "success" ? "rgba(16,185,129,0.15)" : "rgba(220,38,38,0.15)",
             border: `1px solid ${toast.type === "success" ? "rgba(16,185,129,0.3)" : "rgba(220,38,38,0.3)"}`,
             backdropFilter: "blur(12px)",
           }}
@@ -195,7 +182,7 @@ function PlanosContent() {
       <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-12 flex flex-col items-center gap-10">
 
         {/* Heading */}
-        <div className="text-center flex flex-col items-center gap-4 max-w-xl animate-fade-in">
+        <div className="text-center flex flex-col items-center gap-3 max-w-xl animate-fade-in">
           <span
             className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest text-[#c39dff]"
             style={{ background: "rgba(124,31,255,0.15)", border: "1px solid rgba(124,31,255,0.3)" }}
@@ -216,51 +203,11 @@ function PlanosContent() {
           <p className="text-[#a78bca] text-base leading-relaxed">
             Escolha o plano ideal para você e comece a aprender qualquer coisa com o poder da IA.
           </p>
-
-          {/* Billing toggle */}
-          <div
-            className="flex items-center gap-1 p-1 rounded-2xl mt-1"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(124,31,255,0.2)" }}
-          >
-            <button
-              onClick={() => setBilling("mensal")}
-              className="px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200"
-              style={
-                billing === "mensal"
-                  ? { background: "linear-gradient(135deg, #7c1fff, #a66aff)", color: "white" }
-                  : { color: "#7a6a9a" }
-              }
-            >
-              Mensal
-            </button>
-            <button
-              onClick={() => setBilling("anual")}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200"
-              style={
-                billing === "anual"
-                  ? { background: "linear-gradient(135deg, #7c1fff, #a66aff)", color: "white" }
-                  : { color: "#7a6a9a" }
-              }
-            >
-              Anual
-              <span
-                className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                style={{
-                  background: billing === "anual" ? "rgba(255,255,255,0.25)" : "rgba(124,31,255,0.3)",
-                  color: billing === "anual" ? "white" : "#c39dff",
-                }}
-              >
-                -30%
-              </span>
-            </button>
-          </div>
         </div>
 
         {/* Cards */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-5 animate-slide-up">
           {PLANS.map((plan) => {
-            const isAnnual = billing === "anual" && plan.priceAnnual !== null;
-            const displayPrice = isAnnual ? plan.priceAnnual! : plan.priceMonthly;
             const isFree = plan.id === "free";
 
             return (
@@ -319,25 +266,16 @@ function PlanosContent() {
                           : { color: "white" }
                       }
                     >
-                      {displayPrice}
+                      {plan.price}
                     </span>
-                    {!isFree && (
-                      <span className="text-[#7a6a9a] text-sm mb-1.5">/mês</span>
-                    )}
-                    {isFree && (
-                      <span className="text-[#7a6a9a] text-sm mb-1.5">para sempre</span>
-                    )}
+                    {!isFree && <span className="text-[#7a6a9a] text-sm mb-1.5">/mês</span>}
+                    {isFree && <span className="text-[#7a6a9a] text-sm mb-1.5">para sempre</span>}
                   </div>
-                  {isAnnual && !isFree && plan.annualBilling && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#7a6a9a]">cobrado {plan.annualBilling}</span>
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-300"
-                        style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.25)" }}
-                      >
-                        economia de {plan.savings}
-                      </span>
-                    </div>
+                  {!isFree && plan.annualBilling && (
+                    <p className="text-xs text-[#7a6a9a]">cobrado {plan.annualBilling}</p>
+                  )}
+                  {!isFree && (
+                    <p className="text-xs text-[#a78bfa]">Parcelado em até 12x no cartão</p>
                   )}
                 </div>
 
