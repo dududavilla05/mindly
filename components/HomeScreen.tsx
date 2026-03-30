@@ -24,6 +24,7 @@ interface HomeScreenProps {
   user: User | null | undefined;
   profile: UserProfile | null;
   onSignOut: () => void;
+  onOpenHistory?: () => void;
 }
 
 export default function HomeScreen({
@@ -31,6 +32,7 @@ export default function HomeScreen({
   user,
   profile,
   onSignOut,
+  onOpenHistory,
 }: HomeScreenProps) {
   const [subject, setSubject] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -196,6 +198,25 @@ export default function HomeScreen({
             </button>
           )}
         </div>,
+        document.body
+      )}
+
+      {/* Botão histórico mobile */}
+      {mounted && onOpenHistory && createPortal(
+        <button
+          onClick={onOpenHistory}
+          className="md:hidden fixed top-4 left-4 z-[9999] flex items-center justify-center w-10 h-10 rounded-xl text-[#a78bca] hover:text-white transition-all duration-200 animate-fade-in"
+          style={{
+            background: "rgba(124,31,255,0.12)",
+            border: "1px solid rgba(124,31,255,0.25)",
+          }}
+          aria-label="Histórico"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </button>,
         document.body
       )}
 

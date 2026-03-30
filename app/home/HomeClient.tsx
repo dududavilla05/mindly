@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import HomeScreen from "@/components/HomeScreen";
 import LessonScreen from "@/components/LessonScreen";
 import Sidebar from "@/components/Sidebar";
+import HistoryDrawer from "@/components/HistoryDrawer";
 import { useHistory } from "@/hooks/useHistory";
 import type { LessonContent } from "@/types/lesson";
 import type { UserProfile } from "@/app/page";
@@ -26,6 +27,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [currentSubject, setCurrentSubject] = useState("");
   const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Supabase client inicializado via useEffect — nunca roda no servidor
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
@@ -70,6 +72,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     setCurrentLesson(item.lesson_data);
     setCurrentSubject(item.subject);
     setScreen("lesson");
+    setDrawerOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -104,6 +107,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             subject={currentSubject}
             onBack={handleBack}
             onNewLesson={handleNewLesson}
+            onOpenHistory={() => setDrawerOpen(true)}
           />
         ) : (
           <HomeScreen
@@ -111,9 +115,18 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             user={user}
             profile={profile}
             onSignOut={handleSignOut}
+            onOpenHistory={() => setDrawerOpen(true)}
           />
         )}
       </main>
+
+      <HistoryDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        history={history}
+        loading={historyLoading}
+        onSelectLesson={handleSelectHistoryLesson}
+      />
     </div>
   );
 }

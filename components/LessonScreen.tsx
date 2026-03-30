@@ -8,9 +8,10 @@ interface LessonScreenProps {
   subject: string;
   onBack: () => void;
   onNewLesson: () => void;
+  onOpenHistory?: () => void;
 }
 
-export default function LessonScreen({ lesson, subject, onBack, onNewLesson }: LessonScreenProps) {
+export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory }: LessonScreenProps) {
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* Background orbs */}
@@ -38,19 +39,34 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson }: L
           </button>
           <MindlyLogo size="sm" />
         </div>
-        <button
-          onClick={onNewLesson}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-150 hover:scale-105 active:scale-95"
-          style={{
-            background: "linear-gradient(135deg, #7c1fff, #a66aff)",
-            boxShadow: "0 0 12px rgba(124,31,255,0.3)",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-          Nova lição
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenHistory && (
+            <button
+              onClick={onOpenHistory}
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-all duration-150"
+              style={{ background: "rgba(124,31,255,0.1)" }}
+              aria-label="Histórico"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={onNewLesson}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-150 hover:scale-105 active:scale-95"
+            style={{
+              background: "linear-gradient(135deg, #7c1fff, #a66aff)",
+              boxShadow: "0 0 12px rgba(124,31,255,0.3)",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+            Nova lição
+          </button>
+        </div>
       </header>
 
       {/* Main content */}
