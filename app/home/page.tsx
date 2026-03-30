@@ -6,6 +6,7 @@ import LessonScreen from "@/components/LessonScreen";
 import HomeScreen from "@/components/HomeScreen";
 import Sidebar from "@/components/Sidebar";
 import { useHistory } from "@/hooks/useHistory";
+import { createClient } from "@/lib/supabase/client";
 import type { LessonContent } from "@/types/lesson";
 import type { UserProfile } from "@/app/page";
 import type { User } from "@supabase/supabase-js";
@@ -46,17 +47,9 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    let client: SupabaseClientType;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { createClient } = require("@/lib/supabase/client");
-      const result = createClient();
-      if (!result) { router.replace("/login"); return; }
-      client = result;
-    } catch {
-      router.replace("/login");
-      return;
-    }
+    const result = createClient();
+    if (!result) { router.replace("/login"); return; }
+    const client: SupabaseClientType = result;
 
     setSupabase(client);
 
