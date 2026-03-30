@@ -48,7 +48,7 @@ const PLANS: Plan[] = [
     annualBilling: "R$323,88/ano",
     description: "Para quem quer aprender sem limites.",
     emoji: "⚡",
-    priceId: "price_1TEzMKHOf5u0JlparVAelUij",
+    priceId: "price_1TGozXHKVKk7mpMh5PZHlrL8",
     features: [
       { text: "Lições ilimitadas" },
       { text: "Histórico de 2 semanas" },
@@ -68,7 +68,7 @@ const PLANS: Plan[] = [
     annualBilling: "R$587,88/ano",
     description: "A experiência completa de aprendizado com IA.",
     emoji: "🚀",
-    priceId: "price_1TEzMtHOf5u0Jlpa95lqc8w8",
+    priceId: "price_1TGp07HKVKk7mpMh8ORNG6Iq",
     features: [
       { text: "Tudo do Pro" },
       { text: "Modo mentor (chat com IA sobre a lição)", soon: true },
