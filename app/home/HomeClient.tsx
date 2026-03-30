@@ -33,7 +33,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     setSupabase(createClient());
   }, []);
 
-  const { history, loading: historyLoading } = useHistory(supabase, user?.id);
+  const { history, loading: historyLoading, refresh: refreshHistory } = useHistory(supabase, user?.id);
 
   // Detecta apenas sign-out — sem polling, sem getUser() no cliente
   useEffect(() => {
@@ -60,6 +60,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     if (profile && newLessonsToday !== undefined) {
       setProfile({ ...profile, lessons_today: newLessonsToday });
     }
+    refreshHistory();
   };
 
   const handleSelectHistoryLesson = (item: {

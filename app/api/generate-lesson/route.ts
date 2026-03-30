@@ -151,24 +151,25 @@ export async function POST(request: NextRequest) {
       throw new Error("Erro ao processar resposta da IA");
     }
 
-    // Salvar histórico e atualizar contador (usuários autenticados)
+    // Salvar histórico — depende apenas de user existir, não de profile
+    if (user && supabase) {
+      await supabase.from("lesson_history").insert({
+        user_id: user.id,
+        subject: subject?.trim() || "Imagem enviada",
+        lesson_data: lessonData,
+      });
+    }
+
+    // Atualizar contador de lições diárias (requer profile)
     if (user && userProfile && supabase) {
       const today = new Date().toISOString().split("T")[0];
-
-      await Promise.all([
-        supabase
-          .from("profiles")
-          .update({
-            lessons_today: (userProfile.lessons_today || 0) + 1,
-            last_lesson_date: today,
-          })
-          .eq("id", user.id),
-        supabase.from("lesson_history").insert({
-          user_id: user.id,
-          subject: subject?.trim() || "Imagem enviada",
-          lesson_data: lessonData,
-        }),
-      ]);
+      await supabase
+        .from("profiles")
+        .update({
+          lessons_today: (userProfile.lessons_today || 0) + 1,
+          last_lesson_date: today,
+        })
+        .eq("id", user.id);
     }
 
     return NextResponse.json({

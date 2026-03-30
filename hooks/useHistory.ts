@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { SupabaseClientType } from "@/lib/supabase/client";
 import type { LessonContent } from "@/types/lesson";
 
@@ -16,7 +16,7 @@ export function useHistory(
   const [history, setHistory] = useState<LessonHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const fetch = useCallback(() => {
     if (!supabase || !userId) return;
 
     setLoading(true);
@@ -32,5 +32,9 @@ export function useHistory(
       });
   }, [supabase, userId]);
 
-  return { history, loading };
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { history, loading, refresh: fetch };
 }
