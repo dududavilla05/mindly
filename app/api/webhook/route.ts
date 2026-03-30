@@ -11,9 +11,6 @@ const PRICE_TO_PLAN: Record<string, string> = {
   "price_1TGp07HKVKk7mpMh8ORNG6Iq": "max",
 };
 
-// Necessário para verificação de assinatura do Stripe
-export const config = { api: { bodyParser: false } };
-
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const sig = request.headers.get("stripe-signature");
