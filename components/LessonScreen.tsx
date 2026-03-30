@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import MindlyLogo from "./MindlyLogo";
 import type { LessonContent } from "@/types/lesson";
 
@@ -9,9 +10,137 @@ interface LessonScreenProps {
   onBack: () => void;
   onNewLesson: () => void;
   onOpenHistory?: () => void;
+  plan?: string | null;
 }
 
-export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory }: LessonScreenProps) {
+async function exportToPDF(lesson: LessonContent, subject: string) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const W = 210;
+  const margin = 20;
+  const contentW = W - margin * 2;
+  let y = 20;
+
+  const line = (text: string, size: number, color: [number, number, number], bold = false, indent = 0) => {
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    const lines = doc.splitTextToSize(text, contentW - indent);
+    lines.forEach((l: string) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.text(l, margin + indent, y);
+      y += size * 0.45;
+    });
+    y += size * 0.15;
+  };
+
+  const divider = () => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.setDrawColor(100, 60, 180);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, W - margin, y);
+    y += 5;
+  };
+
+  // Header — logo
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 18, "F");
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(167, 139, 250);
+  doc.text("Mindly", margin, 12);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 80, 150);
+  doc.text("mindly-ruby.vercel.app", W - margin, 12, { align: "right" });
+  y = 28;
+
+  // Category + emoji
+  line(`${lesson.emoji}  ${lesson.category.toUpperCase()}`, 9, [160, 100, 255]);
+  y += 2;
+
+  // Title
+  line(lesson.title, 20, [255, 255, 255], true);
+  y += 2;
+
+  if (subject && subject !== "Imagem enviada") {
+    line(`"${subject}"`, 9, [90, 70, 130]);
+    y += 2;
+  }
+
+  divider();
+
+  // Introduction
+  line(lesson.introduction, 10, [210, 190, 240]);
+  y += 4;
+
+  divider();
+
+  // Highlight
+  line(`★  ${lesson.highlight.label}`, 9, [160, 100, 255], true);
+  y += 1;
+  line(lesson.highlight.text, 11, [255, 255, 255], true);
+  y += 4;
+
+  divider();
+
+  // Practical example
+  line(lesson.practicalExample.title.toUpperCase(), 9, [160, 100, 255], true);
+  y += 1;
+  line(lesson.practicalExample.content, 10, [210, 190, 240]);
+  y += 4;
+
+  divider();
+
+  // How to apply
+  line("COMO APLICAR HOJE", 9, [160, 100, 255], true);
+  y += 2;
+  lesson.howToApplyToday.forEach((action, i) => {
+    line(`${i + 1}.  ${action}`, 10, [210, 190, 240], false, 4);
+    y += 1;
+  });
+  y += 3;
+
+  // Curiosity
+  if (lesson.curiosity) {
+    divider();
+    line("💡  VOCÊ SABIA?", 9, [140, 120, 200], true);
+    y += 1;
+    line(lesson.curiosity, 10, [140, 120, 200]);
+    y += 3;
+  }
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFillColor(10, 10, 10);
+    doc.rect(0, 287, W, 10, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 60, 120);
+    doc.text("Gerado pelo Mindly — mindly-ruby.vercel.app", margin, 293);
+    doc.text(`${p} / ${pageCount}`, W - margin, 293, { align: "right" });
+  }
+
+  const filename = `mindly-${lesson.title.toLowerCase().replace(/\s+/g, "-").slice(0, 40)}.pdf`;
+  doc.save(filename);
+}
+
+export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan }: LessonScreenProps) {
+  const [exporting, setExporting] = useState(false);
+  const canExport = plan === "pro" || plan === "max";
+
+  const handleExport = async () => {
+    if (!canExport) return;
+    setExporting(true);
+    try {
+      await exportToPDF(lesson, subject);
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* Background orbs */}
@@ -241,6 +370,56 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
             </p>
           </div>
         )}
+
+        {/* Export PDF */}
+        <div className="relative group">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={
+              canExport
+                ? {
+                    background: "rgba(124,31,255,0.12)",
+                    border: "1px solid rgba(124,31,255,0.35)",
+                    color: "#c39dff",
+                  }
+                : {
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#5c3d8a",
+                    cursor: "not-allowed",
+                  }
+            }
+          >
+            {exporting ? (
+              <>
+                <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
+                  <path d="M12 3a9 9 0 019 9"/>
+                </svg>
+                Gerando PDF...
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                {canExport ? "Exportar PDF" : "Exportar PDF — Disponível no plano Pro"}
+              </>
+            )}
+          </button>
+          {!canExport && (
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              style={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(124,31,255,0.4)" }}
+            >
+              Disponível no plano Pro
+            </div>
+          )}
+        </div>
 
         {/* New lesson CTA */}
         <button

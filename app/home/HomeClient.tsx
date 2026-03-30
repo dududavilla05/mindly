@@ -108,6 +108,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onBack={handleBack}
             onNewLesson={handleNewLesson}
             onOpenHistory={() => setDrawerOpen(true)}
+            plan={profile?.plan}
           />
         ) : (
           <HomeScreen
