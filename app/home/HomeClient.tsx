@@ -35,7 +35,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     setSupabase(createClient());
   }, []);
 
-  const { history, loading: historyLoading, refresh: refreshHistory } = useHistory(supabase, user?.id);
+  const { history, loading: historyLoading, refresh: refreshHistory } = useHistory(supabase, user?.id, profile?.plan);
 
   // Detecta apenas sign-out — sem polling, sem getUser() no cliente
   useEffect(() => {
