@@ -88,10 +88,10 @@ export async function POST(request: NextRequest) {
 
       if (profile) {
         const today = new Date().toISOString().split("T")[0];
-        const originalLastLessonDate = profile.last_lesson_date;
+        const originalLastLessonDate = profile.last_lesson_date?.slice(0, 10) ?? "";
 
         // Resetar contador se mudou o dia
-        if (profile.last_lesson_date !== today) {
+        if (originalLastLessonDate !== today) {
           const admin = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
             .from("profiles")
             .update({ lessons_today: 0, last_lesson_date: today })
             .eq("id", user.id);
-          userProfile = { ...profile, lessons_today: 0, last_lesson_date: originalLastLessonDate, streak_days: profile.streak_days ?? 0 };
+          userProfile = { ...profile, lessons_today: 0, last_lesson_date: originalLastLessonDate, streak_days: profile.streak_days ?? 0  };
         } else {
           userProfile = { ...profile, streak_days: profile.streak_days ?? 0 };
         }
@@ -185,11 +185,12 @@ export async function POST(request: NextRequest) {
       console.log('[STREAK DEBUG] yesterday:', yesterday);
       console.log('[STREAK DEBUG] streak_days atual:', userProfile.streak_days);
 
+      const lastDate = userProfile.last_lesson_date?.slice(0, 10) ?? "";
       let newStreak: number;
-      if (userProfile.last_lesson_date === today) {
+      if (lastDate === today) {
         // Já estudou hoje — mantém streak
         newStreak = userProfile.streak_days;
-      } else if (userProfile.last_lesson_date === yesterday) {
+      } else if (lastDate === yesterday) {
         // Estudou ontem — incrementa streak
         newStreak = userProfile.streak_days + 1;
       } else {
