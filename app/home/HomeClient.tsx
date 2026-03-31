@@ -51,32 +51,21 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   }, [supabase, router]);
 
   const refreshProfile = async () => {
-    if (!supabase || !user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("plan, lessons_today, last_lesson_date, streak_days")
-      .eq("id", user.id)
-      .single();
-    if (data) setProfile(data as UserProfile);
+    try {
+      const res = await fetch("/api/profile");
+      if (!res.ok) return;
+      const { profile: fresh } = await res.json();
+      if (fresh) setProfile(fresh as UserProfile);
+    } catch {
+      // silencioso — perfil desatualizado não é erro crítico
+    }
   };
 
-  const handleLessonGenerated = (
-    lesson: LessonContent,
-    subject: string,
-    newLessonsToday?: number,
-    newStreakDays?: number
-  ) => {
+  const handleLessonGenerated = (lesson: LessonContent, subject: string) => {
     setCurrentLesson(lesson);
     setCurrentSubject(subject);
     setScreen("lesson");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (profile) {
-      setProfile({
-        ...profile,
-        ...(newLessonsToday !== undefined && { lessons_today: newLessonsToday }),
-        ...(newStreakDays !== undefined && { streak_days: newStreakDays }),
-      });
-    }
     refreshHistory();
     refreshProfile();
   };

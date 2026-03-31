@@ -20,7 +20,7 @@ const SUGGESTIONS = [
 ];
 
 interface HomeScreenProps {
-  onLessonGenerated: (lesson: LessonContent, subject: string, lessonsToday?: number, streakDays?: number) => void;
+  onLessonGenerated: (lesson: LessonContent, subject: string) => void;
   user: User | null | undefined;
   profile: UserProfile | null;
   onSignOut: () => void;
@@ -140,12 +140,7 @@ export default function HomeScreen({
         throw new Error(data.error || "Erro ao gerar lição.");
       }
 
-      onLessonGenerated(
-        data.lesson,
-        subject.trim() || "Imagem enviada",
-        data.lessonsToday ?? undefined,
-        data.streakDays ?? undefined
-      );
+      onLessonGenerated(data.lesson, subject.trim() || "Imagem enviada");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocorreu um erro inesperado.");
     } finally {
