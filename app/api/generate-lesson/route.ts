@@ -76,12 +76,12 @@ export async function POST(request: NextRequest) {
     }
 
     const user = supabase ? (await supabase.auth.getUser()).data.user : null;
-    let userProfile: { plan: string; lessons_today: number; last_lesson_date: string } | null = null;
+    let userProfile: { plan: string; lessons_today: number; last_lesson_date: string; streak_days: number } | null = null;
 
     if (user && supabase) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("plan, lessons_today, last_lesson_date")
+        .select("plan, lessons_today, last_lesson_date, streak_days")
         .eq("id", user.id)
         .single();
 
@@ -94,9 +94,9 @@ export async function POST(request: NextRequest) {
             .from("profiles")
             .update({ lessons_today: 0, last_lesson_date: today })
             .eq("id", user.id);
-          userProfile = { ...profile, lessons_today: 0, last_lesson_date: today };
+          userProfile = { ...profile, lessons_today: 0, last_lesson_date: today, streak_days: profile.streak_days ?? 0 };
         } else {
-          userProfile = profile;
+          userProfile = { ...profile, streak_days: profile.streak_days ?? 0 };
         }
 
         // Verificar limite do plano grátis
@@ -169,14 +169,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Atualizar contador de lições diárias (requer profile)
+    // Atualizar contador de lições diárias e streak (requer profile)
     if (user && userProfile && supabase) {
       const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
+
+      let newStreak: number;
+      if (userProfile.last_lesson_date === today) {
+        // Já estudou hoje — mantém streak
+        newStreak = userProfile.streak_days;
+      } else if (userProfile.last_lesson_date === yesterday) {
+        // Estudou ontem — incrementa streak
+        newStreak = userProfile.streak_days + 1;
+      } else {
+        // Pulou um dia ou é o primeiro — começa do 1
+        newStreak = 1;
+      }
+
       await supabase
         .from("profiles")
         .update({
           lessons_today: (userProfile.lessons_today || 0) + 1,
           last_lesson_date: today,
+          streak_days: newStreak,
         })
         .eq("id", user.id);
     }

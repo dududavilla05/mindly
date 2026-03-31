@@ -8,6 +8,7 @@ import type { User } from "@supabase/supabase-js";
 interface Profile {
   plan: "gratis" | "pro" | "max";
   lessons_today: number;
+  streak_days?: number;
 }
 
 interface UserMenuProps {
@@ -41,8 +42,10 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
   const initial = user.email?.[0]?.toUpperCase() ?? "U";
   const plan = profile?.plan ?? "gratis";
   const lessonsToday = profile?.lessons_today ?? 0;
+  const streakDays = profile?.streak_days ?? 0;
   const limit = PLAN_LIMIT[plan];
   const planLabel = PLAN_LABELS[plan];
+  const hasStreak = plan === "pro" || plan === "max";
 
   const planBadgeStyle =
     plan === "max"
@@ -88,7 +91,7 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
 
           {/* Dropdown */}
           <div
-            className="absolute right-0 top-12 z-50 w-64 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in"
+            className="absolute right-0 top-12 z-50 w-68 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in"
             style={{
               background: "rgba(12,8,25,0.98)",
               border: "1px solid rgba(124,31,255,0.3)",
@@ -107,6 +110,37 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
                 <p className="text-white text-sm font-semibold truncate">{user.email}</p>
                 <p className="text-[#a78bca] text-xs">Plano {planLabel}</p>
               </div>
+            </div>
+
+            {/* Streak */}
+            <div
+              className="rounded-xl p-3 flex items-center justify-between"
+              style={{ background: "rgba(124,31,255,0.08)", border: "1px solid rgba(124,31,255,0.15)" }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🔥</span>
+                <div>
+                  <p className="text-xs font-semibold text-white">
+                    {hasStreak ? `${streakDays} ${streakDays === 1 ? "dia" : "dias"} seguidos` : "Streak"}
+                  </p>
+                  <p className="text-[10px] text-[#7a6a9a]">
+                    {hasStreak ? "Continue assim!" : "Disponível no Pro"}
+                  </p>
+                </div>
+              </div>
+              {!hasStreak ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c3d8a" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              ) : (
+                <span
+                  className="text-lg font-black"
+                  style={{ color: streakDays >= 7 ? "#f59e0b" : "#a78bfa" }}
+                >
+                  {streakDays}
+                </span>
+              )}
             </div>
 
             {/* Contador de lições (apenas plano grátis) */}

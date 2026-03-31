@@ -6,6 +6,7 @@ export interface UserProfile {
   plan: "gratis" | "pro" | "max";
   lessons_today: number;
   last_lesson_date: string;
+  streak_days: number;
 }
 
 export default async function RootPage() {

@@ -18,7 +18,7 @@ export default async function HomePage() {
   let profile: UserProfile | null = null;
   const { data } = await supabase
     .from("profiles")
-    .select("plan, lessons_today, last_lesson_date")
+    .select("plan, lessons_today, last_lesson_date, streak_days")
     .eq("id", user.id)
     .single();
 
@@ -30,6 +30,7 @@ export default async function HomePage() {
             plan: data.plan as UserProfile["plan"],
             lessons_today: 0,
             last_lesson_date: today,
+            streak_days: data.streak_days ?? 0,
           }
         : (data as UserProfile);
   }
