@@ -50,6 +50,16 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
+  const refreshProfile = async () => {
+    if (!supabase || !user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("plan, lessons_today, last_lesson_date, streak_days")
+      .eq("id", user.id)
+      .single();
+    if (data) setProfile(data as UserProfile);
+  };
+
   const handleLessonGenerated = (
     lesson: LessonContent,
     subject: string,
@@ -68,6 +78,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
       });
     }
     refreshHistory();
+    refreshProfile();
   };
 
   const handleSelectHistoryLesson = (item: {
