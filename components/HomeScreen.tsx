@@ -464,6 +464,13 @@ export default function HomeScreen({
         </div>
       </div>
 
+      {/* Rodapé */}
+      <footer className="relative z-10 mt-6 pb-8 flex items-center justify-center gap-4 text-xs text-[#4a3870]">
+        <Link href="/termos" className="hover:text-[#a78bfa] transition-colors">Termos de Uso</Link>
+        <span>·</span>
+        <Link href="/privacidade" className="hover:text-[#a78bfa] transition-colors">Privacidade</Link>
+      </footer>
+
       {/* Modais */}
       {showAuthModal && (
         <AuthModal

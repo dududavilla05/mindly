@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 interface AuthModalProps {
@@ -268,7 +269,11 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         </button>
 
         <p className="text-center text-xs text-[#4a3870]">
-          Ao continuar, você concorda com nossos termos de uso.
+          Ao continuar, você concorda com nossos{" "}
+          <Link href="/termos" target="_blank" className="text-[#a78bfa] hover:underline">Termos de Uso</Link>
+          {" "}e{" "}
+          <Link href="/privacidade" target="_blank" className="text-[#a78bfa] hover:underline">Política de Privacidade</Link>
+          .
         </p>
       </div>
     </div>
