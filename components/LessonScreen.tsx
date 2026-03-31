@@ -17,7 +17,7 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
   const { jsPDF } = await import("jspdf");
   const html2canvas = (await import("html2canvas")).default;
 
-  const PAD = 48;
+  const PAD = 40;
 
   const el = document.createElement("div");
   el.style.cssText = `
@@ -27,72 +27,72 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
   `;
 
   el.innerHTML = `
-    <div style="background:#6D28D9;padding:28px ${PAD}px;text-align:center;">
-      <div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:6px;">MINDLY</div>
-      <div style="font-size:12px;color:#DDD6FE;margin-top:6px;">Aprenda qualquer coisa com IA</div>
+    <div style="background:#6D28D9;padding:16px ${PAD}px;text-align:center;">
+      <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:6px;">MINDLY</div>
+      <div style="font-size:11px;color:#DDD6FE;margin-top:3px;">Aprenda qualquer coisa com IA</div>
     </div>
 
-    <div style="padding:40px ${PAD}px 32px;display:flex;flex-direction:column;gap:22px;">
+    <div style="padding:20px ${PAD}px 16px;display:flex;flex-direction:column;gap:12px;">
 
       <div>
-        <span style="background:#EDE9FE;color:#6D28D9;font-size:10px;font-weight:700;
-          letter-spacing:2px;padding:5px 14px;border-radius:20px;text-transform:uppercase;">
+        <span style="background:#EDE9FE;color:#6D28D9;font-size:9px;font-weight:700;
+          letter-spacing:2px;padding:3px 12px;border-radius:20px;text-transform:uppercase;">
           ${lesson.category}
         </span>
       </div>
 
-      <h1 style="font-size:30px;font-weight:900;color:#1e1432;margin:0;line-height:1.25;">
+      <h1 style="font-size:22px;font-weight:900;color:#1e1432;margin:0;line-height:1.2;">
         ${lesson.title}
       </h1>
 
       ${subject && subject !== "Imagem enviada"
-        ? `<p style="font-size:13px;color:#7C6A9A;margin:0;">Assunto: &ldquo;${subject}&rdquo;</p>`
+        ? `<p style="font-size:12px;color:#7C6A9A;margin:0;">Assunto: &ldquo;${subject}&rdquo;</p>`
         : ""}
 
       <hr style="border:none;border-top:1px solid #DDD6FE;margin:0;">
 
-      <p style="font-size:15px;color:#2d1f50;line-height:1.75;margin:0;">
+      <p style="font-size:13px;color:#2d1f50;line-height:1.55;margin:0;">
         ${lesson.introduction}
       </p>
 
-      <div style="background:#F5F3FF;border-left:4px solid #6D28D9;border-radius:0 6px 6px 0;padding:18px 22px;">
-        <div style="font-size:10px;font-weight:700;color:#6D28D9;letter-spacing:2px;
-          text-transform:uppercase;margin-bottom:8px;">${lesson.highlight.label}</div>
-        <div style="font-size:16px;font-weight:700;color:#1e1432;line-height:1.5;">
+      <div style="background:#F5F3FF;border-left:4px solid #6D28D9;border-radius:0 6px 6px 0;padding:12px 16px;">
+        <div style="font-size:9px;font-weight:700;color:#6D28D9;letter-spacing:2px;
+          text-transform:uppercase;margin-bottom:5px;">${lesson.highlight.label}</div>
+        <div style="font-size:13px;font-weight:700;color:#1e1432;line-height:1.4;">
           ${lesson.highlight.text}
         </div>
       </div>
 
-      <div style="border:1px solid #DDD6FE;border-radius:8px;padding:20px 24px;">
-        <div style="font-size:10px;font-weight:700;color:#6D28D9;letter-spacing:2px;
-          text-transform:uppercase;margin-bottom:12px;">${lesson.practicalExample.title}</div>
-        <p style="font-size:15px;color:#2d1f50;line-height:1.75;margin:0;">
+      <div style="border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;">
+        <div style="font-size:9px;font-weight:700;color:#6D28D9;letter-spacing:2px;
+          text-transform:uppercase;margin-bottom:8px;">${lesson.practicalExample.title}</div>
+        <p style="font-size:13px;color:#2d1f50;line-height:1.55;margin:0;">
           ${lesson.practicalExample.content}
         </p>
       </div>
 
-      <div style="border:1px solid #DDD6FE;border-radius:8px;padding:20px 24px;">
-        <div style="font-size:10px;font-weight:700;color:#6D28D9;letter-spacing:2px;
-          text-transform:uppercase;margin-bottom:16px;">Como Aplicar Hoje</div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;">
+        <div style="font-size:9px;font-weight:700;color:#6D28D9;letter-spacing:2px;
+          text-transform:uppercase;margin-bottom:10px;">Como Aplicar Hoje</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
           ${lesson.howToApplyToday.map((a, i) => `
-            <div style="display:flex;gap:14px;align-items:flex-start;">
-              <div style="flex-shrink:0;width:26px;height:26px;background:#6D28D9;border-radius:50%;
-                display:flex;align-items:center;justify-content:center;
-                font-size:12px;font-weight:700;color:#fff;line-height:26px;text-align:center;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="flex-shrink:0;width:22px;height:22px;background:#6D28D9;border-radius:50%;
+                font-size:11px;font-weight:700;color:#fff;
+                line-height:22px;text-align:center;">
                 ${i + 1}
               </div>
-              <p style="font-size:15px;color:#2d1f50;line-height:1.65;margin:0;padding-top:3px;">${a}</p>
+              <p style="font-size:13px;color:#2d1f50;line-height:1.5;margin:0;padding-top:2px;">${a}</p>
             </div>
           `).join("")}
         </div>
       </div>
 
       ${lesson.curiosity ? `
-        <div style="background:#FAFAFA;border:1px solid #EDE9FE;border-radius:8px;padding:18px 24px;">
-          <div style="font-size:10px;font-weight:700;color:#7C6A9A;letter-spacing:2px;
-            text-transform:uppercase;margin-bottom:8px;">Voce Sabia?</div>
-          <p style="font-size:14px;color:#7C6A9A;line-height:1.7;margin:0;font-style:italic;">
+        <div style="background:#FAFAFA;border:1px solid #EDE9FE;border-radius:8px;padding:12px 16px;">
+          <div style="font-size:9px;font-weight:700;color:#7C6A9A;letter-spacing:2px;
+            text-transform:uppercase;margin-bottom:5px;">Voce Sabia?</div>
+          <p style="font-size:12px;color:#7C6A9A;line-height:1.55;margin:0;font-style:italic;">
             ${lesson.curiosity}
           </p>
         </div>
@@ -100,8 +100,8 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
 
     </div>
 
-    <div style="background:#F5F3FF;border-top:1px solid #DDD6FE;padding:14px ${PAD}px;text-align:center;">
-      <span style="font-size:11px;color:#7C6A9A;">
+    <div style="background:#F5F3FF;border-top:1px solid #DDD6FE;padding:10px ${PAD}px;text-align:center;">
+      <span style="font-size:10px;color:#7C6A9A;">
         Gerado pelo Mindly &nbsp;&bull;&nbsp; mindly-ruby.vercel.app
       </span>
     </div>
