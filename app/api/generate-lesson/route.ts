@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
 
       if (profile) {
         const today = new Date().toISOString().split("T")[0];
+        const originalLastLessonDate = profile.last_lesson_date;
 
         // Resetar contador se mudou o dia
         if (profile.last_lesson_date !== today) {
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
             .from("profiles")
             .update({ lessons_today: 0, last_lesson_date: today })
             .eq("id", user.id);
-          userProfile = { ...profile, lessons_today: 0, last_lesson_date: today, streak_days: profile.streak_days ?? 0 };
+          userProfile = { ...profile, lessons_today: 0, last_lesson_date: originalLastLessonDate, streak_days: profile.streak_days ?? 0 };
         } else {
           userProfile = { ...profile, streak_days: profile.streak_days ?? 0 };
         }
