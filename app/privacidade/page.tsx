@@ -103,8 +103,8 @@ export default function PrivacidadePage() {
             </p>
             <p className="mt-2">
               <strong className="text-white">E-mail:</strong>{" "}
-              <a href="mailto:contato@mindly.app" className="text-[#a78bfa] hover:underline">
-                contato@mindly.app
+              <a href="mailto:suporte.mindly@gmail.com" className="text-[#a78bfa] hover:underline">
+                suporte.mindly@gmail.com
               </a>
             </p>
           </section>

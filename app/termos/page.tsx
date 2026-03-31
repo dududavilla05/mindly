@@ -115,8 +115,8 @@ export default function TermosPage() {
             <h2 className="text-xl font-semibold text-white mb-3">10. Contato</h2>
             <p>
               Dúvidas sobre estes termos:{" "}
-              <a href="mailto:contato@mindly.app" className="text-[#a78bfa] hover:underline">
-                contato@mindly.app
+              <a href="mailto:suporte.mindly@gmail.com" className="text-[#a78bfa] hover:underline">
+                suporte.mindly@gmail.com
               </a>
             </p>
           </section>
