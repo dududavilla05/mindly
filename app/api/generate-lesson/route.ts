@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import type { GenerateLessonRequest } from "@/types/lesson";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 const SYSTEM_PROMPT = `Você é o Mindly, um professor especialista em criar lições curtas, envolventes e práticas sobre qualquer assunto.
 
@@ -92,7 +92,10 @@ export async function POST(request: NextRequest) {
 
         // Resetar contador se mudou o dia
         if (profile.last_lesson_date !== today) {
-          const admin = createAdminClient();
+          const admin = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
           await admin
             .from("profiles")
             .update({ lessons_today: 0, last_lesson_date: today })
@@ -195,9 +198,14 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('[STREAK DEBUG] newStreak calculado:', newStreak);
+      console.log('[STREAK DEBUG] SERVICE_ROLE_KEY set:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+      console.log('[STREAK DEBUG] user.id:', user.id);
 
-      const admin = createAdminClient();
-      const { error: updateError } = await admin
+      const admin = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { error: updateError, status: updateStatus } = await admin
         .from("profiles")
         .update({
           lessons_today: (userProfile.lessons_today || 0) + 1,
@@ -206,7 +214,7 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", user.id);
 
-      console.log('[STREAK DEBUG] UPDATE error:', updateError);
+      console.log('[STREAK DEBUG] UPDATE error:', updateError, 'status:', updateStatus);
     }
 
     return NextResponse.json({
