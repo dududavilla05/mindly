@@ -68,6 +68,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     window.scrollTo({ top: 0, behavior: "smooth" });
     refreshHistory();
     refreshProfile();
+    window.location.reload();
   };
 
   const handleSelectHistoryLesson = (item: {
