@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import type { GenerateLessonRequest } from "@/types/lesson";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const SYSTEM_PROMPT = `Você é o Mindly, um professor especialista em criar lições curtas, envolventes e práticas sobre qualquer assunto.
 
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
 
         // Resetar contador se mudou o dia
         if (profile.last_lesson_date !== today) {
-          await supabase
+          const admin = createAdminClient();
+          await admin
             .from("profiles")
             .update({ lessons_today: 0, last_lesson_date: today })
             .eq("id", user.id);
@@ -194,7 +196,8 @@ export async function POST(request: NextRequest) {
 
       console.log('[STREAK DEBUG] newStreak calculado:', newStreak);
 
-      const { error: updateError } = await supabase
+      const admin = createAdminClient();
+      const { error: updateError } = await admin
         .from("profiles")
         .update({
           lessons_today: (userProfile.lessons_today || 0) + 1,
