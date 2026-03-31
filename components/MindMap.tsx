@@ -35,6 +35,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   const [expandingId, setExpandingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+  const [saveIsError, setSaveIsError] = useState(false);
   const [error, setError] = useState("");
 
   const generate = useCallback(async () => {
@@ -88,21 +89,31 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     if (!userId || nodes.length === 0) return;
     setSaving(true);
     setSavedMsg("");
+    setSaveIsError(false);
     try {
       const supabase = createClient();
-      if (!supabase) throw new Error("Cliente não disponível");
+      if (!supabase) throw new Error("Cliente Supabase não disponível");
+      console.log("[MindMap] Salvando mapa:", { userId, title: topic.trim(), nodesCount: nodes.length, edgesCount: edges.length });
       const { error } = await supabase.from("mind_maps").insert({
         user_id: userId,
         title: topic.trim() || "Mapa sem título",
-        nodes,
-        edges,
+        nodes: nodes,
+        edges: edges,
       });
-      if (error) throw error;
-      setSavedMsg("Mapa salvo!");
+      if (error) {
+        console.error("[MindMap] Erro Supabase ao salvar:", { code: error.code, message: error.message, details: error.details, hint: error.hint });
+        throw new Error(error.message ?? "Erro do banco de dados");
+      }
+      console.log("[MindMap] Mapa salvo com sucesso.");
+      setSavedMsg("Salvo!");
+      setSaveIsError(false);
       onSaved?.();
       setTimeout(() => setSavedMsg(""), 2500);
-    } catch {
-      setSavedMsg("Erro ao salvar.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro desconhecido";
+      console.error("[MindMap] Falha ao salvar:", e);
+      setSavedMsg(msg.length > 35 ? msg.slice(0, 35) + "…" : msg);
+      setSaveIsError(true);
     } finally {
       setSaving(false);
     }
@@ -175,9 +186,13 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
             onClick={handleSave}
             disabled={saving}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50 shrink-0"
-            style={{ background: "rgba(124,31,255,0.15)", border: "1px solid rgba(124,31,255,0.3)", color: "#c39dff" }}
+            style={{
+              background: saveIsError ? "rgba(239,68,68,0.12)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.12)" : "rgba(124,31,255,0.15)",
+              border: `1px solid ${saveIsError ? "rgba(239,68,68,0.35)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.35)" : "rgba(124,31,255,0.3)"}`,
+              color: saveIsError ? "#fca5a5" : savedMsg && !saveIsError ? "#86efac" : "#c39dff",
+            }}
           >
-            {saving ? "..." : savedMsg || "💾 Salvar"}
+            {saving ? "Salvando…" : saveIsError ? "❌ " + savedMsg : savedMsg ? "✓ " + savedMsg : "💾 Salvar"}
           </button>
         )}
       </header>
