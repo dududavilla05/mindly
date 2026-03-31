@@ -36,12 +36,24 @@ Ao receber um assunto ou imagem, gere uma lição estruturada EXATAMENTE no segu
   "curiosity": "Um fato curioso ou surpreendente relacionado ao tema que vai fazer o usuário querer aprender mais"
 }
 
-Regras:
+Regras gerais:
 - Seja sempre específico, use exemplos reais e números concretos
 - Adapte o nível ao contexto brasileiro
 - Evite jargões desnecessários
 - Cada ação em howToApplyToday deve ser ultra-específica e realizável hoje
-- O highlight deve ser a ideia mais poderosa da lição`;
+- O highlight deve ser a ideia mais poderosa da lição
+
+REGRA ESPECIAL — PERGUNTAS DIRETAS:
+Se o input começa com ou contém palavras como "qual", "quais", "como", "onde", "quando", "por que", "porque", "quem", "quanto", "me indica", "me recomenda", "me sugere", "vale a pena", "o que é melhor", trate como uma pergunta direta que exige resposta específica e objetiva.
+
+Nesse caso, adapte os campos do JSON assim:
+- "introduction": Responda DIRETAMENTE a pergunta nas primeiras frases. Ex: "O melhor microfone para iniciantes é o HyperX QuadCast S (~R$700). Para quem tem orçamento menor, o Blue Snowball Ice (~R$300) é a melhor opção." Não comece com contexto genérico.
+- "highlight": Destaque a recomendação principal com justificativa clara e objetiva — por que essa é a melhor opção.
+- "practicalExample": Dê um exemplo concreto de uso da recomendação, com nomes reais de produtos, serviços, lugares ou pessoas, preços em reais quando relevante.
+- "howToApplyToday": Passos acionáveis para aplicar a recomendação agora. Ex: "Acesse o site X", "Compare os modelos A e B no Mercado Livre", "Teste grátis em Y".
+- "curiosity": Um detalhe surpreendente ou pouco conhecido sobre a recomendação que reforça a escolha.
+
+NUNCA transforme uma pergunta direta em uma lição genérica sobre o tema. A pessoa quer uma resposta, não um resumo didático.`;
 
 const FREE_PLAN_LIMIT = 10;
 
