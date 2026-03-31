@@ -79,8 +79,14 @@ export async function POST(request: NextRequest) {
     const user = supabase ? (await supabase.auth.getUser()).data.user : null;
     let userProfile: { plan: string; lessons_today: number; last_lesson_date: string; streak_days: number } | null = null;
 
-    if (user && supabase) {
-      const { data: profile } = await supabase
+    // Admin client para leitura e escrita sem RLS
+    const adminSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    if (user) {
+      const { data: profile } = await adminSupabase
         .from("profiles")
         .select("plan, lessons_today, last_lesson_date, streak_days")
         .eq("id", user.id)
@@ -88,22 +94,11 @@ export async function POST(request: NextRequest) {
 
       if (profile) {
         const today = new Date().toISOString().split("T")[0];
-        const originalLastLessonDate = profile.last_lesson_date?.slice(0, 10) ?? "";
+        const lastDate = profile.last_lesson_date ? String(profile.last_lesson_date).slice(0, 10) : null;
 
-        // Resetar contador se mudou o dia
-        if (originalLastLessonDate !== today) {
-          const admin = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          );
-          await admin
-            .from("profiles")
-            .update({ lessons_today: 0, last_lesson_date: today })
-            .eq("id", user.id);
-          userProfile = { ...profile, lessons_today: 0, last_lesson_date: originalLastLessonDate, streak_days: profile.streak_days ?? 0  };
-        } else {
-          userProfile = { ...profile, streak_days: profile.streak_days ?? 0 };
-        }
+        // Se mudou o dia, resetar contador; senão manter
+        const lessonsToday = lastDate === today ? (profile.lessons_today ?? 0) : 0;
+        userProfile = { ...profile, lessons_today: lessonsToday, streak_days: profile.streak_days ?? 0 };
 
         // Verificar limite do plano grátis
         if (userProfile.plan === "gratis" && userProfile.lessons_today >= FREE_PLAN_LIMIT) {
@@ -166,47 +161,40 @@ export async function POST(request: NextRequest) {
       throw new Error("Erro ao processar resposta da IA");
     }
 
-    // Salvar histórico — depende apenas de user existir, não de profile
-    if (user && supabase) {
-      await supabase.from("lesson_history").insert({
+    // Salvar histórico
+    if (user) {
+      await adminSupabase.from("lesson_history").insert({
         user_id: user.id,
         subject: subject?.trim() || "Imagem enviada",
         lesson_data: lessonData,
       });
     }
 
-    // Atualizar contador de lições diárias e streak (requer profile)
-    if (user && userProfile && supabase) {
+    // Atualizar contador de lições diárias e streak
+    if (user && userProfile) {
       const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const lastDate = userProfile.last_lesson_date ? String(userProfile.last_lesson_date).slice(0, 10) : null;
 
-      console.log('[STREAK DEBUG] originalLastLessonDate:', userProfile.last_lesson_date);
-      console.log('[STREAK DEBUG] today:', today);
-      console.log('[STREAK DEBUG] yesterday:', yesterday);
-      console.log('[STREAK DEBUG] streak_days atual:', userProfile.streak_days);
+      console.log("[STREAK] today:", today);
+      console.log("[STREAK] yesterday:", yesterday);
+      console.log("[STREAK] lastDate:", lastDate);
+      console.log("[STREAK] streak_days atual:", userProfile.streak_days);
 
-      const lastDate = userProfile.last_lesson_date?.slice(0, 10) ?? "";
       let newStreak: number;
       if (lastDate === today) {
-        // Já estudou hoje — mantém streak
         newStreak = userProfile.streak_days;
       } else if (lastDate === yesterday) {
-        // Estudou ontem — incrementa streak
         newStreak = userProfile.streak_days + 1;
       } else {
-        // Pulou um dia ou é o primeiro — começa do 1
         newStreak = 1;
       }
 
-      console.log('[STREAK DEBUG] newStreak calculado:', newStreak);
-      console.log('[STREAK DEBUG] SERVICE_ROLE_KEY set:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-      console.log('[STREAK DEBUG] user.id:', user.id);
+      console.log("[STREAK] newStreak:", newStreak);
+      console.log("[STREAK] SERVICE_ROLE_KEY set:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+      console.log("[STREAK] user.id:", user.id);
 
-      const admin = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      const { error: updateError, status: updateStatus } = await admin
+      const { error: updateError, status: updateStatus } = await adminSupabase
         .from("profiles")
         .update({
           lessons_today: (userProfile.lessons_today || 0) + 1,
@@ -215,7 +203,7 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", user.id);
 
-      console.log('[STREAK DEBUG] UPDATE error:', updateError, 'status:', updateStatus);
+      console.log("[STREAK] UPDATE error:", updateError, "status:", updateStatus);
     }
 
     return NextResponse.json({
