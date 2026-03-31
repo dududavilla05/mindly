@@ -15,167 +15,128 @@ interface LessonScreenProps {
 
 async function exportToPDF(lesson: LessonContent, subject: string) {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const html2canvas = (await import("html2canvas")).default;
 
-  const W = 210;
-  const margin = 18;
-  const contentW = W - margin * 2;
-  const FOOTER_H = 14;
-  const PAGE_H = 297;
-  const maxY = PAGE_H - FOOTER_H - 8;
+  const PAD = 48;
 
-  // Colors (RGB for white background PDF)
-  const C = {
-    purple:     [109, 40, 217] as [number,number,number],
-    purpleLight:[237, 233, 254] as [number,number,number],
-    text:       [30,  20,  50]  as [number,number,number],
-    muted:      [100, 90, 120]  as [number,number,number],
-    divider:    [220,210,240]   as [number,number,number],
-  };
+  const el = document.createElement("div");
+  el.style.cssText = `
+    position:absolute; left:-9999px; top:0;
+    width:794px; background:#ffffff;
+    font-family:Arial,Helvetica,sans-serif; color:#1e1432;
+  `;
 
-  let y = 0;
+  el.innerHTML = `
+    <div style="background:#6D28D9;padding:28px ${PAD}px;text-align:center;">
+      <div style="font-size:30px;font-weight:900;color:#ffffff;letter-spacing:6px;">MINDLY</div>
+      <div style="font-size:12px;color:#DDD6FE;margin-top:6px;">Aprenda qualquer coisa com IA</div>
+    </div>
 
-  const newPage = () => {
-    doc.addPage();
-    y = margin;
-  };
+    <div style="padding:40px ${PAD}px 32px;display:flex;flex-direction:column;gap:22px;">
 
-  const checkY = (needed: number) => {
-    if (y + needed > maxY) newPage();
-  };
+      <div>
+        <span style="background:#EDE9FE;color:#6D28D9;font-size:10px;font-weight:700;
+          letter-spacing:2px;padding:5px 14px;border-radius:20px;text-transform:uppercase;">
+          ${lesson.category}
+        </span>
+      </div>
 
-  // Write wrapped text, returns new y
-  const write = (
-    text: string,
-    size: number,
-    color: [number,number,number],
-    bold = false,
-    indent = 0,
-    gap = 2
-  ) => {
-    doc.setFontSize(size);
-    doc.setTextColor(...color);
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    const wrapped = doc.splitTextToSize(text, contentW - indent);
-    const lineH = size * 0.4;
-    wrapped.forEach((ln: string) => {
-      checkY(lineH + 1);
-      doc.text(ln, margin + indent, y);
-      y += lineH;
+      <h1 style="font-size:30px;font-weight:900;color:#1e1432;margin:0;line-height:1.25;">
+        ${lesson.title}
+      </h1>
+
+      ${subject && subject !== "Imagem enviada"
+        ? `<p style="font-size:13px;color:#7C6A9A;margin:0;">Assunto: &ldquo;${subject}&rdquo;</p>`
+        : ""}
+
+      <hr style="border:none;border-top:1px solid #DDD6FE;margin:0;">
+
+      <p style="font-size:15px;color:#2d1f50;line-height:1.75;margin:0;">
+        ${lesson.introduction}
+      </p>
+
+      <div style="background:#F5F3FF;border-left:4px solid #6D28D9;border-radius:0 6px 6px 0;padding:18px 22px;">
+        <div style="font-size:10px;font-weight:700;color:#6D28D9;letter-spacing:2px;
+          text-transform:uppercase;margin-bottom:8px;">${lesson.highlight.label}</div>
+        <div style="font-size:16px;font-weight:700;color:#1e1432;line-height:1.5;">
+          ${lesson.highlight.text}
+        </div>
+      </div>
+
+      <div style="border:1px solid #DDD6FE;border-radius:8px;padding:20px 24px;">
+        <div style="font-size:10px;font-weight:700;color:#6D28D9;letter-spacing:2px;
+          text-transform:uppercase;margin-bottom:12px;">${lesson.practicalExample.title}</div>
+        <p style="font-size:15px;color:#2d1f50;line-height:1.75;margin:0;">
+          ${lesson.practicalExample.content}
+        </p>
+      </div>
+
+      <div style="border:1px solid #DDD6FE;border-radius:8px;padding:20px 24px;">
+        <div style="font-size:10px;font-weight:700;color:#6D28D9;letter-spacing:2px;
+          text-transform:uppercase;margin-bottom:16px;">Como Aplicar Hoje</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          ${lesson.howToApplyToday.map((a, i) => `
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="flex-shrink:0;width:26px;height:26px;background:#6D28D9;border-radius:50%;
+                display:flex;align-items:center;justify-content:center;
+                font-size:12px;font-weight:700;color:#fff;line-height:26px;text-align:center;">
+                ${i + 1}
+              </div>
+              <p style="font-size:15px;color:#2d1f50;line-height:1.65;margin:0;padding-top:3px;">${a}</p>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      ${lesson.curiosity ? `
+        <div style="background:#FAFAFA;border:1px solid #EDE9FE;border-radius:8px;padding:18px 24px;">
+          <div style="font-size:10px;font-weight:700;color:#7C6A9A;letter-spacing:2px;
+            text-transform:uppercase;margin-bottom:8px;">Voce Sabia?</div>
+          <p style="font-size:14px;color:#7C6A9A;line-height:1.7;margin:0;font-style:italic;">
+            ${lesson.curiosity}
+          </p>
+        </div>
+      ` : ""}
+
+    </div>
+
+    <div style="background:#F5F3FF;border-top:1px solid #DDD6FE;padding:14px ${PAD}px;text-align:center;">
+      <span style="font-size:11px;color:#7C6A9A;">
+        Gerado pelo Mindly &nbsp;&bull;&nbsp; mindly-ruby.vercel.app
+      </span>
+    </div>
+  `;
+
+  document.body.appendChild(el);
+
+  try {
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
     });
-    y += gap;
-  };
 
-  const divider = () => {
-    checkY(6);
-    doc.setDrawColor(...C.divider);
-    doc.setLineWidth(0.25);
-    doc.line(margin, y, W - margin, y);
-    y += 6;
-  };
+    const imgData = canvas.toDataURL("image/png");
+    const pdfW = 210;
+    const pdfH = 297;
+    const imgH = (canvas.height * pdfW) / canvas.width;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
 
-  const sectionLabel = (label: string) => {
-    checkY(12);
-    doc.setFillColor(...C.purpleLight);
-    doc.roundedRect(margin, y - 4, contentW, 8, 1.5, 1.5, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C.purple);
-    doc.text(label.toUpperCase(), margin + 3, y + 0.5);
-    y += 9;
-  };
+    let posY = 0;
+    let first = true;
+    while (posY < imgH) {
+      if (!first) doc.addPage();
+      doc.addImage(imgData, "PNG", 0, -posY, pdfW, imgH);
+      posY += pdfH;
+      first = false;
+    }
 
-  // ── HEADER ──────────────────────────────────────────────
-  doc.setFillColor(...C.purple);
-  doc.rect(0, 0, W, 22, "F");
-
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text("MINDLY", W / 2, 13, { align: "center" });
-
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(220, 200, 255);
-  doc.text("Aprenda qualquer coisa com IA", W / 2, 19, { align: "center" });
-
-  y = 30;
-
-  // ── CATEGORY & TITLE ────────────────────────────────────
-  write(lesson.category.toUpperCase(), 8, C.purple, true, 0, 1);
-  write(lesson.title, 20, C.text, true, 0, 3);
-
-  if (subject && subject !== "Imagem enviada") {
-    write(`Assunto: ${subject}`, 9, C.muted, false, 0, 4);
+    const slug = lesson.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+    doc.save(`mindly-${slug}.pdf`);
+  } finally {
+    document.body.removeChild(el);
   }
-
-  divider();
-
-  // ── INTRODUCTION ────────────────────────────────────────
-  write(lesson.introduction, 10.5, C.text, false, 0, 6);
-
-  // ── HIGHLIGHT ───────────────────────────────────────────
-  checkY(20);
-  doc.setFillColor(...C.purpleLight);
-  const hlLines = doc.splitTextToSize(lesson.highlight.text, contentW - 8);
-  const hlH = hlLines.length * 5.5 + 14;
-  doc.roundedRect(margin, y, contentW, hlH, 2, 2, "F");
-  doc.setFillColor(...C.purple);
-  doc.roundedRect(margin, y, 3, hlH, 1, 1, "F");
-  y += 6;
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.purple);
-  doc.text(lesson.highlight.label.toUpperCase(), margin + 6, y);
-  y += 5;
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...C.text);
-  hlLines.forEach((ln: string) => { doc.text(ln, margin + 6, y); y += 5.5; });
-  y += 8;
-
-  // ── PRACTICAL EXAMPLE ───────────────────────────────────
-  sectionLabel(lesson.practicalExample.title);
-  write(lesson.practicalExample.content, 10.5, C.text, false, 0, 6);
-
-  // ── HOW TO APPLY TODAY ──────────────────────────────────
-  sectionLabel("Como aplicar hoje");
-  lesson.howToApplyToday.forEach((action, i) => {
-    checkY(10);
-    doc.setFillColor(...C.purple);
-    doc.circle(margin + 3, y - 1.5, 2.5, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
-    doc.text(String(i + 1), margin + 3, y - 0.8, { align: "center" });
-    write(action, 10.5, C.text, false, 8, 3);
-  });
-  y += 4;
-
-  // ── CURIOSITY ───────────────────────────────────────────
-  if (lesson.curiosity) {
-    sectionLabel("Voce sabia?");
-    write(lesson.curiosity, 10.5, C.muted, false, 0, 6);
-  }
-
-  // ── FOOTER (all pages) ──────────────────────────────────
-  const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) {
-    doc.setPage(p);
-    doc.setFillColor(245, 243, 255);
-    doc.rect(0, PAGE_H - FOOTER_H, W, FOOTER_H, "F");
-    doc.setDrawColor(...C.divider);
-    doc.setLineWidth(0.3);
-    doc.line(0, PAGE_H - FOOTER_H, W, PAGE_H - FOOTER_H);
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C.muted);
-    doc.text("Gerado pelo Mindly  •  mindly-ruby.vercel.app", margin, PAGE_H - 6);
-    doc.text(`${p} / ${pageCount}`, W - margin, PAGE_H - 6, { align: "right" });
-  }
-
-  const slug = lesson.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
-  doc.save(`mindly-${slug}.pdf`);
 }
 
 export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan }: LessonScreenProps) {
