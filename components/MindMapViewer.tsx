@@ -115,11 +115,14 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId }
     return result;
   }, []);
 
-  // Recompute when nodes change
+  // Recompute when nodes change — defer to rAF so SVG has its final dimensions
   useEffect(() => {
-    const p = computePositions(nodes);
-    posRef.current = p;
-    setPositions(new Map(p));
+    const raf = requestAnimationFrame(() => {
+      const p = computePositions(nodes);
+      posRef.current = p;
+      setPositions(new Map(p));
+    });
+    return () => cancelAnimationFrame(raf);
   }, [nodes, computePositions]);
 
   // Set up D3 zoom

@@ -33,6 +33,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"licoes" | "mapas">("licoes");
 
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
   useEffect(() => { setSupabase(createClient()); }, []);
@@ -79,6 +80,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     setMindMapData(data ?? null);
     setScreen("mindmap");
     setDrawerOpen(false);
+    setSidebarTab("mapas");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -86,7 +88,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     handleOpenMindMap({ topic: item.title, nodes: item.nodes, edges: item.edges });
   };
 
-  const handleBack = () => setScreen("home");
+  const handleBack = () => { setScreen("home"); setSidebarTab("licoes"); };
 
   const handleNewLesson = () => {
     setScreen("home");
@@ -113,6 +115,8 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         onSelectMindMap={handleSelectMindMap}
         onNewMindMap={() => handleOpenMindMap()}
         plan={profile?.plan}
+        activeTab={sidebarTab}
+        onTabChange={setSidebarTab}
       />
 
       <main className="flex-1 min-w-0">

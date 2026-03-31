@@ -132,7 +132,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   }
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: "#0f0a1e" }}>
+    <div className="flex flex-col h-screen" style={{ background: "#0f0a1e" }}>
       {/* Header */}
       <header
         className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0 z-10"
@@ -183,7 +183,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       </header>
 
       {/* Canvas */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 min-h-0 relative overflow-hidden">
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
             <div className="w-12 h-12 rounded-full border-2 border-[#7c1fff] border-t-transparent animate-spin" />
