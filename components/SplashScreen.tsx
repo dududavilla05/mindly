@@ -77,7 +77,7 @@ export default function SplashScreen() {
           <img
             src="/icons/logo.png"
             alt="Mindly"
-            style={{ width: 120, height: 120, borderRadius: 28, display: "block" }}
+            style={{ width: 280, height: 280, borderRadius: 60, display: "block" }}
           />
         </div>
 
