@@ -174,6 +174,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Atualizar contador de lições diárias e streak
+    let finalStreak: number | null = null;
     if (user && userProfile) {
       const now = new Date();
       const brasiliaOffset = -3 * 60;
@@ -191,6 +192,7 @@ export async function POST(request: NextRequest) {
       } else {
         newStreak = 1;
       }
+      finalStreak = newStreak;
 
       console.log("[STREAK] SERVICE_ROLE_KEY set:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
       console.log("[STREAK] user.id:", userId);
@@ -211,6 +213,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       lesson: lessonData,
       lessonsToday: userProfile ? userProfile.lessons_today + 1 : null,
+      streakDays: finalStreak,
       plan: userProfile?.plan ?? null,
     });
   } catch (error) {

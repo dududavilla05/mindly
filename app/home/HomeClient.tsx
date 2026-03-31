@@ -53,14 +53,19 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const handleLessonGenerated = (
     lesson: LessonContent,
     subject: string,
-    newLessonsToday?: number
+    newLessonsToday?: number,
+    newStreakDays?: number
   ) => {
     setCurrentLesson(lesson);
     setCurrentSubject(subject);
     setScreen("lesson");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (profile && newLessonsToday !== undefined) {
-      setProfile({ ...profile, lessons_today: newLessonsToday });
+    if (profile) {
+      setProfile({
+        ...profile,
+        ...(newLessonsToday !== undefined && { lessons_today: newLessonsToday }),
+        ...(newStreakDays !== undefined && { streak_days: newStreakDays }),
+      });
     }
     refreshHistory();
   };
