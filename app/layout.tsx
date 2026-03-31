@@ -15,8 +15,8 @@ export const metadata: Metadata = {
     title: "Mindly",
   },
   icons: {
-    icon: "/icons/icon-512.png",
-    apple: "/icons/icon-512.png",
+    icon: "/icons/logo.png",
+    apple: "/icons/logo.png",
   },
 };
 
@@ -51,7 +51,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Mindly" />
-        <link rel="apple-touch-icon" href="/icons/icon-512.png" />
+        <link rel="apple-touch-icon" href="/icons/logo.png" />
       </head>
       <body className="min-h-screen bg-[#0f0a1e] text-white antialiased">
         <SplashScreen />
