@@ -93,7 +93,10 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (profile) {
-        const today = new Date().toISOString().split("T")[0];
+        const now = new Date();
+        const brasiliaOffset = -3 * 60;
+        const brasiliaTime = new Date(now.getTime() + (brasiliaOffset - now.getTimezoneOffset()) * 60000);
+        const today = brasiliaTime.toISOString().split("T")[0];
         const lastDate = profile.last_lesson_date ? String(profile.last_lesson_date).slice(0, 10) : null;
 
         // Se mudou o dia, resetar contador; senão manter
@@ -172,14 +175,13 @@ export async function POST(request: NextRequest) {
 
     // Atualizar contador de lições diárias e streak
     if (user && userProfile) {
-      const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const now = new Date();
+      const brasiliaOffset = -3 * 60;
+      const brasiliaTime = new Date(now.getTime() + (brasiliaOffset - now.getTimezoneOffset()) * 60000);
+      const today = brasiliaTime.toISOString().split("T")[0];
+      const yesterday = new Date(brasiliaTime.getTime() - 86400000).toISOString().split("T")[0];
       const lastDate = userProfile.last_lesson_date ? String(userProfile.last_lesson_date).slice(0, 10) : null;
-
-      console.log("[STREAK] today:", today);
-      console.log("[STREAK] yesterday:", yesterday);
-      console.log("[STREAK] lastDate:", lastDate);
-      console.log("[STREAK] streak_days atual:", userProfile.streak_days);
+      const userId = user.id;
 
       let newStreak: number;
       if (lastDate === today) {
@@ -190,9 +192,8 @@ export async function POST(request: NextRequest) {
         newStreak = 1;
       }
 
-      console.log("[STREAK] newStreak:", newStreak);
       console.log("[STREAK] SERVICE_ROLE_KEY set:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-      console.log("[STREAK] user.id:", user.id);
+      console.log("[STREAK] user.id:", userId);
 
       const { error: updateError, status: updateStatus } = await adminSupabase
         .from("profiles")
@@ -201,9 +202,10 @@ export async function POST(request: NextRequest) {
           last_lesson_date: today,
           streak_days: newStreak,
         })
-        .eq("id", user.id);
+        .eq("id", userId);
 
-      console.log("[STREAK] UPDATE error:", updateError, "status:", updateStatus);
+      console.log("[STREAK] updateStatus:", updateStatus, "newStreak:", newStreak, "lastDate:", lastDate, "today:", today, "yesterday:", yesterday);
+      if (updateError) console.log("[STREAK] UPDATE error:", updateError);
     }
 
     return NextResponse.json({
