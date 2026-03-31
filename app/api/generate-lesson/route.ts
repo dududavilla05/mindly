@@ -4,6 +4,23 @@ import type { GenerateLessonRequest } from "@/types/lesson";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+// Rate limiting: 20 req/hora por IP (in-memory — resets on cold start)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hora
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
 const SYSTEM_PROMPT = `Você é o Mindly. Responda sempre em português brasileiro. Retorne APENAS JSON puro, sem markdown.
 
 Formato obrigatório:
@@ -23,6 +40,14 @@ PERGUNTAS DIRETAS — se o input contiver "qual", "como", "onde", "quando", "por
 const FREE_PLAN_LIMIT = 10;
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Muitas requisições, tente novamente em breve." },
+      { status: 429 }
+    );
+  }
+
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
     if (!apiKey) {
