@@ -203,6 +203,30 @@ export async function POST(request: NextRequest) {
         .eq("id", user.id);
 
       if (updateError) console.error("[profile update error]", updateError);
+
+      // Incrementa ranking semanal
+      const weekStart = new Date(brasiliaTime);
+      weekStart.setDate(brasiliaTime.getDate() - brasiliaTime.getDay()); // domingo da semana
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      const { data: rankingRow } = await adminSupabase
+        .from("weekly_ranking")
+        .select("id, lessons_count")
+        .eq("user_id", user.id)
+        .eq("week_start", weekStartStr)
+        .single();
+
+      if (rankingRow) {
+        await adminSupabase
+          .from("weekly_ranking")
+          .update({ lessons_count: rankingRow.lessons_count + 1 })
+          .eq("id", rankingRow.id);
+      } else {
+        const { error: rankingError } = await adminSupabase
+          .from("weekly_ranking")
+          .insert({ user_id: user.id, email: user.email ?? "", lessons_count: 1, week_start: weekStartStr });
+        if (rankingError) console.error("[ranking insert error]", rankingError);
+      }
     }
 
     return NextResponse.json({

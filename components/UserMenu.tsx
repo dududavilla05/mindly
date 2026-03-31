@@ -197,6 +197,20 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
               </Link>
             )}
 
+            {/* Ranking */}
+            <Link
+              href="/ranking"
+              onClick={() => setOpen(false)}
+              className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#a78bca",
+              }}
+            >
+              🏆 Ranking semanal
+            </Link>
+
             {/* Sair */}
             <button
               onClick={handleSignOut}
