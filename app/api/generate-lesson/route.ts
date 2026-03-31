@@ -175,6 +175,11 @@ export async function POST(request: NextRequest) {
       const today = new Date().toISOString().split("T")[0];
       const yesterday = new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
 
+      console.log('[STREAK DEBUG] originalLastLessonDate:', userProfile.last_lesson_date);
+      console.log('[STREAK DEBUG] today:', today);
+      console.log('[STREAK DEBUG] yesterday:', yesterday);
+      console.log('[STREAK DEBUG] streak_days atual:', userProfile.streak_days);
+
       let newStreak: number;
       if (userProfile.last_lesson_date === today) {
         // Já estudou hoje — mantém streak
@@ -187,7 +192,9 @@ export async function POST(request: NextRequest) {
         newStreak = 1;
       }
 
-      await supabase
+      console.log('[STREAK DEBUG] newStreak calculado:', newStreak);
+
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({
           lessons_today: (userProfile.lessons_today || 0) + 1,
@@ -195,6 +202,8 @@ export async function POST(request: NextRequest) {
           streak_days: newStreak,
         })
         .eq("id", user.id);
+
+      console.log('[STREAK DEBUG] UPDATE error:', updateError);
     }
 
     return NextResponse.json({
