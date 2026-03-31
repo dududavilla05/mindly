@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MindlyLogo from "./MindlyLogo";
+import MentorChat from "./MentorChat";
 import type { LessonContent } from "@/types/lesson";
 
 interface LessonScreenProps {
@@ -141,7 +142,9 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
 
 export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan }: LessonScreenProps) {
   const [exporting, setExporting] = useState(false);
+  const [mentorOpen, setMentorOpen] = useState(false);
   const canExport = plan === "pro" || plan === "max";
+  const canMentor = plan === "max";
 
   const handleExport = async () => {
     if (!canExport) return;
@@ -432,6 +435,38 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
           )}
         </div>
 
+        {/* Modo Mentor */}
+        <div className="relative group">
+          <button
+            onClick={() => canMentor && setMentorOpen(true)}
+            className="w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2"
+            style={
+              canMentor
+                ? {
+                    background: "linear-gradient(135deg, rgba(124,31,255,0.2), rgba(166,106,255,0.15))",
+                    border: "1px solid rgba(124,31,255,0.5)",
+                    color: "#c39dff",
+                  }
+                : {
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#5c3d8a",
+                    cursor: "not-allowed",
+                  }
+            }
+          >
+            💬 {canMentor ? "Falar com Mentor" : "Falar com Mentor — Plano Max"}
+          </button>
+          {!canMentor && (
+            <div
+              className="absolute -top-9 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              style={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(124,31,255,0.4)" }}
+            >
+              Disponível no plano Max
+            </div>
+          )}
+        </div>
+
         {/* New lesson CTA */}
         <button
           onClick={onNewLesson}
@@ -451,6 +486,10 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
           Gerado pelo Mindly · Powered by Claude AI
         </p>
       </main>
+
+      {mentorOpen && (
+        <MentorChat lesson={lesson} onClose={() => setMentorOpen(false)} />
+      )}
     </div>
   );
 }
