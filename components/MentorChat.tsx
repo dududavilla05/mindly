@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { LessonContent } from "@/types/lesson";
 
 interface Message {
@@ -143,7 +145,43 @@ export default function MentorChat({ lesson, onClose }: MentorChatProps) {
                       }
                 }
               >
-                {msg.content}
+                {msg.role === "user" ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                      h1: ({ children }) => <h1 className="text-base font-bold text-white mb-2 mt-3 first:mt-0">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-sm font-bold text-[#c39dff] mb-2 mt-3 first:mt-0">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-semibold text-[#a78bfa] mb-1 mt-2 first:mt-0">{children}</h3>,
+                      ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="text-[#d4c0f0]">{children}</li>,
+                      strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                      em: ({ children }) => <em className="italic text-[#c4b5fd]">{children}</em>,
+                      code: ({ inline, children }: { inline?: boolean; children?: React.ReactNode }) =>
+                        inline ? (
+                          <code className="px-1.5 py-0.5 rounded text-xs font-mono text-[#c39dff]" style={{ background: "rgba(124,31,255,0.2)" }}>{children}</code>
+                        ) : (
+                          <pre className="rounded-xl p-3 my-2 overflow-x-auto text-xs font-mono text-[#c39dff]" style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(124,31,255,0.2)" }}>
+                            <code>{children}</code>
+                          </pre>
+                        ),
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-2">
+                          <table className="w-full text-xs border-collapse">{children}</table>
+                        </div>
+                      ),
+                      th: ({ children }) => <th className="px-3 py-1.5 text-left text-[#c39dff] font-semibold" style={{ borderBottom: "1px solid rgba(124,31,255,0.3)" }}>{children}</th>,
+                      td: ({ children }) => <td className="px-3 py-1.5 text-[#d4c0f0]" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>{children}</td>,
+                      blockquote: ({ children }) => <blockquote className="pl-3 my-2 italic text-[#a78bfa]" style={{ borderLeft: "3px solid rgba(124,31,255,0.5)" }}>{children}</blockquote>,
+                      a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#a78bfa] underline hover:text-[#c4b5fd]">{children}</a>,
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           ))}
