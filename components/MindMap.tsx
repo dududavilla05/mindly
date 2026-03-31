@@ -94,9 +94,11 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       const supabase = createClient();
       if (!supabase) throw new Error("Cliente Supabase não disponível");
       console.log("[MindMap] Salvando mapa:", { userId, title: topic.trim(), nodesCount: nodes.length, edgesCount: edges.length });
+      const titleValue = topic.trim() || "Mapa sem título";
       const { error } = await supabase.from("mind_maps").insert({
         user_id: userId,
-        title: topic.trim() || "Mapa sem título",
+        title: titleValue,
+        topic: titleValue,
         nodes: nodes,
         edges: edges,
       });
