@@ -142,6 +142,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             profile={profile}
             onSignOut={handleSignOut}
             onOpenHistory={() => setDrawerOpen(true)}
+            onOpenMindMap={() => handleOpenMindMap()}
           />
         )}
       </main>
