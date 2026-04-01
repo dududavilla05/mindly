@@ -5,6 +5,46 @@ import MindlyLogo from "./MindlyLogo";
 import MentorChat from "./MentorChat";
 import type { LessonContent } from "@/types/lesson";
 
+interface LessonImage {
+  url: string;
+  alt: string;
+  photographer: string;
+  photographerUrl: string;
+}
+
+function InlineImage({ img }: { img: LessonImage }) {
+  return (
+    <div className="rounded-2xl overflow-hidden relative animate-fade-in">
+      <img
+        src={img.url}
+        alt={img.alt}
+        className="w-full h-44 sm:h-56 object-cover"
+        loading="lazy"
+      />
+      <div
+        className="absolute bottom-0 inset-x-0 px-3 py-1.5 flex items-center gap-1 text-[10px]"
+        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", color: "rgba(255,255,255,0.65)" }}
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+        <a
+          href={img.photographerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          {img.photographer}
+        </a>
+        <span className="opacity-50">·</span>
+        <span>Pexels</span>
+      </div>
+    </div>
+  );
+}
+
 interface LessonScreenProps {
   lesson: LessonContent;
   subject: string;
@@ -140,11 +180,56 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
   }
 }
 
+const ILLUSTRATE_LIMITS: Record<string, string> = {
+  gratis: "3/dia",
+  pro: "10/dia",
+  max: "ilimitado",
+};
+
 export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan }: LessonScreenProps) {
   const [exporting, setExporting] = useState(false);
   const [mentorOpen, setMentorOpen] = useState(false);
+  const [lessonImages, setLessonImages] = useState<LessonImage[]>([]);
+  const [illustrating, setIllustrating] = useState(false);
+  const [illustrateError, setIllustrateError] = useState<string | null>(null);
   const canExport = plan === "pro" || plan === "max";
   const canMentor = plan === "max";
+  const canIllustrate = !!plan; // qualquer plano logado
+
+  const handleIllustrate = async () => {
+    if (lessonImages.length > 0) {
+      setLessonImages([]);
+      setIllustrateError(null);
+      return;
+    }
+    setIllustrating(true);
+    setIllustrateError(null);
+    try {
+      const res = await fetch("/api/illustrate-lesson", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonTitle: lesson.title,
+          lessonCategory: lesson.category,
+          subject,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === "limite_atingido") {
+          setIllustrateError(`Limite diário atingido (${data.limit} ilustrações). Faça upgrade para mais.`);
+        } else {
+          setIllustrateError(data.error || "Erro ao buscar imagens.");
+        }
+        return;
+      }
+      setLessonImages(data.images ?? []);
+    } catch {
+      setIllustrateError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIllustrating(false);
+    }
+  };
 
   const handleExport = async () => {
     if (!canExport) return;
@@ -263,6 +348,9 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
           </p>
         </div>
 
+        {/* Imagem 1 — após introdução */}
+        {lessonImages[0] && <InlineImage img={lessonImages[0]} />}
+
         {/* Highlight */}
         <div
           className="rounded-2xl p-6 relative overflow-hidden"
@@ -327,6 +415,9 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
           </p>
         </div>
 
+        {/* Imagem 2 — após exemplo prático */}
+        {lessonImages[1] && <InlineImage img={lessonImages[1]} />}
+
         {/* How to apply today */}
         <div
           className="rounded-2xl p-5 flex flex-col gap-4"
@@ -384,6 +475,77 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
             </p>
           </div>
         )}
+
+        {/* Imagem 3 — após curiosidade */}
+        {lessonImages[2] && <InlineImage img={lessonImages[2]} />}
+
+        {/* Ilustrar com IA */}
+        <div className="relative group">
+          <button
+            onClick={handleIllustrate}
+            disabled={illustrating || !canIllustrate}
+            className="w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={
+              canIllustrate
+                ? lessonImages.length > 0
+                  ? {
+                      background: "rgba(124,31,255,0.08)",
+                      border: "1px solid rgba(124,31,255,0.25)",
+                      color: "#7a5faa",
+                    }
+                  : {
+                      background: "rgba(124,31,255,0.12)",
+                      border: "1px solid rgba(124,31,255,0.35)",
+                      color: "#c39dff",
+                    }
+                : {
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#5c3d8a",
+                    cursor: "not-allowed",
+                  }
+            }
+          >
+            {illustrating ? (
+              <>
+                <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
+                  <path d="M12 3a9 9 0 019 9" />
+                </svg>
+                Buscando imagens...
+              </>
+            ) : lessonImages.length > 0 ? (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Remover ilustrações
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                {canIllustrate
+                  ? `Ilustrar com IA${plan ? ` — ${ILLUSTRATE_LIMITS[plan] ?? ""}` : ""}`
+                  : "Ilustrar com IA — Faça login"}
+              </>
+            )}
+          </button>
+          {!canIllustrate && (
+            <div
+              className="absolute -top-9 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              style={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(124,31,255,0.4)" }}
+            >
+              Faça login para ilustrar lições
+            </div>
+          )}
+          {illustrateError && (
+            <p className="mt-2 text-center text-xs text-red-400">{illustrateError}</p>
+          )}
+        </div>
 
         {/* Export PDF */}
         <div className="relative group">
