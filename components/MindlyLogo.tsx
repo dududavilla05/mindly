@@ -2,9 +2,9 @@ import Image from "next/image";
 
 export default function MindlyLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const sizes = {
-    sm: { icon: 80, text: "text-xl" },
-    md: { icon: 120, text: "text-3xl" },
-    lg: { icon: 160, text: "text-4xl" },
+    sm: { icon: 28, text: "text-xl" },
+    md: { icon: 40, text: "text-3xl" },
+    lg: { icon: 52, text: "text-4xl" },
   };
 
   const { icon, text } = sizes[size];

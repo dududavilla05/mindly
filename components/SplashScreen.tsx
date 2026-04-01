@@ -77,7 +77,7 @@ export default function SplashScreen() {
           <img
             src="/icons/logo-final.png"
             alt="Mindly"
-            style={{ width: 320, height: 320, objectFit: "contain", display: "block" }}
+            style={{ width: 88, height: 88, display: "block" }}
           />
         </div>
 
