@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import MindlyLogo from "./MindlyLogo";
 
-const PHASES = [
+const DEFAULT_PHASES = [
   "Analisando seu tema...",
   "Gerando conteúdo personalizado...",
   "Organizando as ideias...",
@@ -23,7 +23,11 @@ const PARTICLES = [
   { size: 3,  top: "85%", left: "35%", animation: "animate-float-alt",   delay: "1.4s" },
 ];
 
-export default function GeneratingOverlay() {
+interface GeneratingOverlayProps {
+  phases?: string[];
+}
+
+export default function GeneratingOverlay({ phases = DEFAULT_PHASES }: GeneratingOverlayProps) {
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [textVisible, setTextVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -48,7 +52,7 @@ export default function GeneratingOverlay() {
       }, 350);
     }, 2200);
     return () => clearInterval(interval);
-  }, []);
+  }, [phases]);
 
   if (!mounted) return null;
 

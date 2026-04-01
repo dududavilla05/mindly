@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import MindMapViewer from "./MindMapViewer";
+import GeneratingOverlay from "./GeneratingOverlay";
 
 export interface MindMapNode {
   id: string;
@@ -202,10 +203,13 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       {/* Canvas */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
-            <div className="w-12 h-12 rounded-full border-2 border-[#7c1fff] border-t-transparent animate-spin" />
-            <p className="text-[#a78bca] text-sm">Gerando mapa mental...</p>
-          </div>
+          <GeneratingOverlay phases={[
+            "Mapeando conexões...",
+            "Organizando os conceitos...",
+            "Criando os nós...",
+            "Estruturando o mapa...",
+            "Quase pronto...",
+          ]} />
         )}
 
         {error && (
@@ -226,12 +230,14 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
         )}
 
         {nodes.length > 0 && !loading && (
-          <MindMapViewer
-            nodes={nodes}
-            edges={edges}
-            onNodeClick={handleNodeClick}
-            expandingId={expandingId}
-          />
+          <div className="animate-fade-in w-full h-full">
+            <MindMapViewer
+              nodes={nodes}
+              edges={edges}
+              onNodeClick={handleNodeClick}
+              expandingId={expandingId}
+            />
+          </div>
         )}
 
         {expandingId && (
