@@ -18,13 +18,15 @@ export const metadata: Metadata = {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: "/icons/logo-final.png",
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#534AB7",
+  themeColor: "#7c3aed",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -54,7 +56,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Mindly" />
-        <link rel="apple-touch-icon" href="/icons/logo-final.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
       </head>

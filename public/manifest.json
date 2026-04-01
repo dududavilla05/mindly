@@ -5,24 +5,12 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f0a1e",
-  "theme_color": "#534AB7",
+  "background_color": "#1a0533",
+  "theme_color": "#7c3aed",
   "lang": "pt-BR",
   "scope": "/",
   "categories": ["education", "productivity"],
   "icons": [
-    {
-      "src": "/icons/logo-final.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/logo-final.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
@@ -34,16 +22,27 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "screenshots": [],
   "shortcuts": [
     {
       "name": "Nova Lição",
       "short_name": "Nova Lição",
       "description": "Gerar uma nova lição com IA",
       "url": "/",
-      "icons": [{ "src": "/icons/logo-final.png", "sizes": "512x512" }]
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
