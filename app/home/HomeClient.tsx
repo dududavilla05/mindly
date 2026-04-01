@@ -120,14 +120,16 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
       <main className="flex-1 min-w-0">
         {screen === "lesson" && currentLesson ? (
-          <LessonScreen
-            lesson={currentLesson}
-            subject={currentSubject}
-            onBack={handleBack}
-            onNewLesson={handleNewLesson}
-            onOpenHistory={() => setDrawerOpen(true)}
-            plan={profile?.plan}
-          />
+          <div className="animate-lesson-enter">
+            <LessonScreen
+              lesson={currentLesson}
+              subject={currentSubject}
+              onBack={handleBack}
+              onNewLesson={handleNewLesson}
+              onOpenHistory={() => setDrawerOpen(true)}
+              plan={profile?.plan}
+            />
+          </div>
         ) : screen === "mindmap" ? (
           <MindMap
             plan={profile?.plan}

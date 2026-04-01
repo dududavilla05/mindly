@@ -7,6 +7,7 @@ import MindlyLogo from "./MindlyLogo";
 import AuthModal from "./AuthModal";
 import UpgradeModal from "./UpgradeModal";
 import UserMenu from "./UserMenu";
+import GeneratingOverlay from "./GeneratingOverlay";
 import type { LessonContent } from "@/types/lesson";
 import type { User } from "@supabase/supabase-js";
 import type { UserProfile } from "@/app/page";
@@ -505,12 +506,20 @@ export default function HomeScreen({
             onClick={handleGenerate}
             disabled={!canGenerate}
             className={`relative w-full py-4 rounded-2xl font-bold text-base transition-all duration-200 overflow-hidden ${
-              canGenerate
+              loading
+                ? "cursor-not-allowed"
+                : canGenerate
                 ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                 : "cursor-not-allowed opacity-40"
             }`}
             style={
-              canGenerate
+              loading
+                ? {
+                    background: "linear-gradient(135deg, #6b0fe0 0%, #8b3dff 100%)",
+                    boxShadow: "0 0 30px rgba(124,31,255,0.7), 0 0 60px rgba(124,31,255,0.3)",
+                    animation: "pulse 1.6s ease-in-out infinite",
+                  }
+                : canGenerate
                 ? {
                     background: "linear-gradient(135deg, #7c1fff 0%, #a66aff 100%)",
                     boxShadow: "0 4px 20px rgba(124, 31, 255, 0.5)",
@@ -519,8 +528,8 @@ export default function HomeScreen({
             }
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-3">
-                <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="flex items-center justify-center gap-3 text-white/90">
+                <svg className="animate-spin flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
                   <path d="M12 3a9 9 0 019 9" />
                 </svg>
@@ -535,6 +544,9 @@ export default function HomeScreen({
               </span>
             )}
           </button>
+
+          {/* Overlay de geração */}
+          {loading && <GeneratingOverlay />}
         </div>
 
         {/* Sugestões */}

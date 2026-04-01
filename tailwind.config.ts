@@ -31,6 +31,12 @@ const config: Config = {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.4s ease-out",
         "shimmer": "shimmer 1.5s infinite",
+        "float": "float 3s ease-in-out infinite",
+        "float-alt": "floatAlt 4.5s ease-in-out infinite",
+        "float-slow": "float 5.5s ease-in-out infinite",
+        "pulse-ring": "pulseRing 2s ease-in-out infinite",
+        "bounce-dot": "bounceDot 1.4s ease-in-out infinite",
+        "lesson-enter": "lessonEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },
       keyframes: {
         fadeIn: {
@@ -44,6 +50,27 @@ const config: Config = {
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px) scale(1)", opacity: "0.5" },
+          "50%": { transform: "translateY(-18px) scale(1.08)", opacity: "0.9" },
+        },
+        floatAlt: {
+          "0%, 100%": { transform: "translateY(0px) translateX(0px)", opacity: "0.35" },
+          "33%": { transform: "translateY(-12px) translateX(10px)", opacity: "0.75" },
+          "66%": { transform: "translateY(-6px) translateX(-8px)", opacity: "0.55" },
+        },
+        pulseRing: {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.7" },
+          "50%": { transform: "scale(1.2)", opacity: "0.15" },
+        },
+        bounceDot: {
+          "0%, 80%, 100%": { transform: "scale(0.6)", opacity: "0.4" },
+          "40%": { transform: "scale(1)", opacity: "1" },
+        },
+        lessonEnter: {
+          "0%": { opacity: "0", transform: "translateY(16px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
         },
       },
     },
