@@ -43,7 +43,7 @@ export default function SplashScreen() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 16px;
+          gap: 12px;
           overflow: hidden;
           transition: opacity 600ms ease;
         }
