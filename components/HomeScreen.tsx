@@ -156,7 +156,7 @@ export default function HomeScreen({
   return (
     <div
       suppressHydrationWarning
-      className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12"
+      className="relative min-h-screen flex flex-col items-center justify-start md:justify-center px-4 pt-24 pb-12 md:py-12"
     >
       {/* Background orbs — isolados para não quebrar position:fixed em Safari/iOS */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -174,9 +174,99 @@ export default function HomeScreen({
         />
       </div>
 
-      {/* Barra de navegação — portal garante position:fixed real fora de qualquer container */}
+      {/* Header mobile — linha 1: histórico | logo | avatar  /  linha 2: Mapa Mental */}
       {mounted && authReady && createPortal(
-        <div className="fixed top-4 right-4 z-[9999] animate-fade-in flex flex-col items-end gap-2">
+        <div
+          className="md:hidden fixed top-0 inset-x-0 z-[9999] animate-fade-in flex flex-col"
+          style={{ background: "rgba(15,10,30,0.88)", backdropFilter: "blur(18px)", borderBottom: "1px solid rgba(124,31,255,0.15)" }}
+        >
+          {/* Linha 1 */}
+          <div className="flex items-center justify-between px-4 h-14">
+            {/* Histórico */}
+            {onOpenHistory ? (
+              <button
+                onClick={onOpenHistory}
+                className="flex items-center justify-center w-10 h-10 rounded-xl text-[#a78bca] hover:text-white transition-all duration-200"
+                style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+                aria-label="Histórico"
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </button>
+            ) : <div className="w-10" />}
+
+            {/* Logo centralizado */}
+            <MindlyLogo size="sm" />
+
+            {/* Avatar / Entrar */}
+            <div className="flex items-center">
+              {user ? (
+                <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
+                  style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Entrar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Linha 2 — Mapa Mental (só para usuários logados) */}
+          {user && (
+            <div className="flex justify-end px-4 pb-2">
+              {profile?.plan === "max" ? (
+                <button
+                  onClick={onOpenMindMap}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
+                  style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="4" cy="6" r="2" /><line x1="6" y1="6" x2="9" y2="11" />
+                    <circle cx="20" cy="6" r="2" /><line x1="18" y1="6" x2="15" y2="11" />
+                    <circle cx="4" cy="18" r="2" /><line x1="6" y1="18" x2="9" y2="13" />
+                    <circle cx="20" cy="18" r="2" /><line x1="18" y1="18" x2="15" y2="13" />
+                  </svg>
+                  Mapa Mental
+                </button>
+              ) : (
+                <div className="relative group">
+                  <button
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#4a3870] cursor-not-allowed"
+                    style={{ background: "rgba(124,31,255,0.06)", border: "1px solid rgba(124,31,255,0.15)" }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Mapa Mental
+                  </button>
+                  <div
+                    className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}
+                  >
+                    Exclusivo plano Max
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+
+      {/* Barra de navegação desktop */}
+      {mounted && authReady && createPortal(
+        <div className="hidden md:flex fixed top-4 right-4 z-[9999] animate-fade-in flex-col items-end gap-2">
           {user ? (
             <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
           ) : (
@@ -241,11 +331,11 @@ export default function HomeScreen({
         document.body
       )}
 
-      {/* Botão histórico mobile */}
+      {/* Botão histórico desktop */}
       {mounted && onOpenHistory && createPortal(
         <button
           onClick={onOpenHistory}
-          className="md:hidden fixed top-4 left-4 z-[9999] flex items-center justify-center w-10 h-10 rounded-xl text-[#a78bca] hover:text-white transition-all duration-200 animate-fade-in"
+          className="hidden md:flex fixed top-4 left-4 z-[9999] items-center justify-center w-10 h-10 rounded-xl text-[#a78bca] hover:text-white transition-all duration-200 animate-fade-in"
           style={{
             background: "rgba(124,31,255,0.12)",
             border: "1px solid rgba(124,31,255,0.25)",
@@ -262,8 +352,8 @@ export default function HomeScreen({
 
       {/* Conteúdo principal */}
       <div className="relative z-10 w-full max-w-2xl flex flex-col items-center gap-8">
-        {/* Logo + tagline */}
-        <div className="flex flex-col items-center gap-3 animate-fade-in">
+        {/* Logo + tagline — oculto no mobile (aparece no header fixo) */}
+        <div className="hidden md:flex flex-col items-center gap-3 animate-fade-in">
           <MindlyLogo size="lg" />
           <p className="text-[#a78bca] text-base font-medium tracking-wide text-center">
             Aprenda qualquer coisa em minutos com IA
