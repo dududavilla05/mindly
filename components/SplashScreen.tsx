@@ -76,7 +76,7 @@ export default function SplashScreen() {
       >
         <video
           ref={videoRef}
-          src="/VideoIntro.mov"
+          src="/VideoIntro.mp4"
           autoPlay
           muted
           playsInline
