@@ -33,6 +33,13 @@ export default function GeneratingOverlay() {
   }, []);
 
   useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       setTextVisible(false);
       setTimeout(() => {
@@ -47,8 +54,17 @@ export default function GeneratingOverlay() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center animate-fade-in"
-      style={{ background: "rgba(8,4,20,0.93)", backdropFilter: "blur(14px)" }}
+      className="flex items-center justify-center animate-fade-in"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 99999,
+        background: "rgba(8,4,20,0.93)",
+        backdropFilter: "blur(14px)",
+      }}
     >
       {/* Orbs de fundo */}
       <div
