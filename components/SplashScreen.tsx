@@ -6,8 +6,10 @@ export default function SplashScreen() {
   const [visible, setVisible] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
   const [done, setDone] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dismiss = () => {
     if (fadingOut) return;
@@ -25,11 +27,21 @@ export default function SplashScreen() {
     }
     setVisible(true);
 
+    // Fallback geral: fecha em 4s
     const fallback = setTimeout(dismiss, 4000);
+
+    // Fallback de vídeo: se não carregar em 2s, mostra logo estática
+    videoFallbackRef.current = setTimeout(() => {
+      const v = videoRef.current;
+      if (v && (v.readyState === 0 || v.networkState === 3)) {
+        setVideoFailed(true);
+      }
+    }, 2000);
 
     return () => {
       clearTimeout(fallback);
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (videoFallbackRef.current) clearTimeout(videoFallbackRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -61,9 +73,19 @@ export default function SplashScreen() {
           top: 0;
           left: 0;
           width: 120px;
-          height: 50px;
+          height: 60px;
           background: #0d0015;
           z-index: 1;
+        }
+        .splash-fallback {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          background: #0d0015;
         }
       `}</style>
 
@@ -74,15 +96,42 @@ export default function SplashScreen() {
           pointerEvents: fadingOut ? "none" : "all",
         }}
       >
-        <video
-          ref={videoRef}
-          src="/VideoIntro.mp4"
-          autoPlay
-          muted
-          playsInline
-          onEnded={dismiss}
-          className="splash-video"
-        />
+        {videoFailed ? (
+          <div className="splash-fallback">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/logo-final.png"
+              alt="Mindly"
+              style={{ width: 160, height: 160, objectFit: "contain" }}
+            />
+            <span style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontStyle: "italic",
+              fontWeight: 600,
+              fontSize: 56,
+              color: "#ffffff",
+              letterSpacing: "-0.01em",
+            }}>
+              Mindly
+            </span>
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            src="/VideoIntro.mp4"
+            autoPlay
+            muted
+            playsInline
+            loop
+            width="100%"
+            height="100%"
+            onEnded={dismiss}
+            onError={() => setVideoFailed(true)}
+            className="splash-video"
+            // Atributos extras para Android WebView e iOS
+            {...{ "webkit-playsinline": "true", "x5-playsinline": "true" }}
+          />
+        )}
 
         {/* Cobre a marca d'água do CapCut */}
         <div className="splash-watermark-cover" />
