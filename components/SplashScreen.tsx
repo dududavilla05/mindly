@@ -66,8 +66,8 @@ export default function SplashScreen() {
         }
 
         .sp-logo {
-          width: 280px;
-          height: 280px;
+          width: 380px;
+          height: 380px;
           object-fit: contain;
           opacity: 0;
           animation: sp-logo 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0s forwards;
