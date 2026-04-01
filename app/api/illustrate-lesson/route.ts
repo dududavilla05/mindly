@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
@@ -13,10 +14,71 @@ function getTodayBrasilia(): string {
 }
 
 interface PexelsPhoto {
-  src: { large: string; medium: string };
+  id: number;
+  src: { large: string; large2x: string };
   alt: string;
   photographer: string;
   photographer_url: string;
+  avg_color: string;
+}
+
+async function generateSearchQueries(
+  lessonTitle: string,
+  lessonCategory: string,
+  subject: string
+): Promise<string[]> {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
+
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 120,
+    messages: [
+      {
+        role: "user",
+        content: `Generate exactly 3 short English image search queries for a lesson about: "${lessonTitle}" (category: ${lessonCategory}${subject && subject !== "Imagem enviada" ? `, topic: ${subject}` : ""}).
+
+Rules:
+- Each query must be 2-4 words in English
+- Queries should be visually distinct from each other (different angles on the topic)
+- Focus on concrete, photogenic concepts — avoid abstract words
+- Prefer professional/editorial photography terms
+
+Respond with ONLY a JSON array of 3 strings, nothing else. Example: ["stock market trading", "financial charts analysis", "wall street business"]`,
+      },
+    ],
+  });
+
+  const text = response.content.find((c) => c.type === "text")?.text ?? "";
+  const match = text.match(/\[.*\]/s);
+  if (!match) return [lessonTitle];
+
+  const queries: unknown = JSON.parse(match[0]);
+  if (!Array.isArray(queries)) return [lessonTitle];
+  return (queries as string[]).slice(0, 3).filter((q) => typeof q === "string" && q.trim());
+}
+
+async function fetchBestPhoto(query: string, pexelsKey: string): Promise<PexelsPhoto | null> {
+  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=landscape&size=large`;
+  const res = await fetch(url, { headers: { Authorization: pexelsKey } });
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const photos = (data.photos ?? []) as PexelsPhoto[];
+  if (photos.length === 0) return null;
+
+  // Prefere fotos coloridas (avg_color não é cinza puro) — pega a primeira que tiver
+  const colorful = photos.find((p) => {
+    const hex = (p.avg_color ?? "").replace("#", "");
+    if (hex.length !== 6) return false;
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    return max - min > 30; // tem variação de cor suficiente
+  });
+
+  return colorful ?? photos[0];
 }
 
 export async function POST(request: NextRequest) {
@@ -73,38 +135,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Monta query de busca combinando título + categoria para mais relevância
-    const searchQuery = [
-      lessonTitle.split(" ").slice(0, 5).join(" "),
-      lessonCategory,
-      subject && subject !== "Imagem enviada" ? subject.split(" ").slice(0, 3).join(" ") : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    // Gera 3 queries específicas via Claude Haiku
+    const queries = await generateSearchQueries(lessonTitle, lessonCategory ?? "", subject ?? "");
 
-    const pexelsRes = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=3&orientation=landscape`,
-      { headers: { Authorization: pexelsKey } }
+    // Busca em paralelo — uma foto por query
+    const photoResults = await Promise.all(
+      queries.map((q) => fetchBestPhoto(q, pexelsKey))
     );
 
-    if (!pexelsRes.ok) {
-      return NextResponse.json(
-        { error: "Erro ao buscar imagens. Tente novamente." },
-        { status: 502 }
-      );
-    }
+    // Remove nulos e deduplica por ID
+    const seenIds = new Set<number>();
+    const unique = photoResults.filter((p): p is PexelsPhoto => {
+      if (!p || seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
 
-    const pexelsData = await pexelsRes.json();
-    const photos = (pexelsData.photos ?? []) as PexelsPhoto[];
-
-    if (photos.length === 0) {
+    if (unique.length === 0) {
       return NextResponse.json(
         { error: "Nenhuma imagem encontrada para este tema." },
         { status: 404 }
       );
     }
 
-    const images = photos.map((photo) => ({
+    const images = unique.map((photo) => ({
       url: photo.src.large,
       alt: photo.alt || lessonTitle,
       photographer: photo.photographer,
@@ -117,7 +171,11 @@ export async function POST(request: NextRequest) {
       .update({ images_today: usedToday + 1, last_image_date: today })
       .eq("id", user.id);
 
-    return NextResponse.json({ images, remaining: limit === null ? null : limit - usedToday - 1 });
+    return NextResponse.json({
+      images,
+      queries, // útil para debug
+      remaining: limit === null ? null : limit - usedToday - 1,
+    });
   } catch (err) {
     console.error("[illustrate-lesson error]", err);
     return NextResponse.json({ error: "Erro ao ilustrar lição." }, { status: 500 });
