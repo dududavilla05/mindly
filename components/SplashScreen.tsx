@@ -25,7 +25,6 @@ export default function SplashScreen() {
     }
     setVisible(true);
 
-    // Fallback: dismiss after 4 seconds regardless
     const fallback = setTimeout(dismiss, 4000);
 
     return () => {
@@ -38,33 +37,56 @@ export default function SplashScreen() {
   if (done || !visible) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        background: "#0d0015",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: fadingOut ? 0 : 1,
-        transition: "opacity 600ms ease",
-        pointerEvents: fadingOut ? "none" : "all",
-      }}
-    >
-      <video
-        ref={videoRef}
-        src="/VideoIntro.mov"
-        autoPlay
-        muted
-        playsInline
-        onEnded={dismiss}
+    <>
+      <style>{`
+        .splash-root {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          width: 100vw;
+          height: 100vh;
+          height: -webkit-fill-available;
+          background: #0d0015;
+          overflow: hidden;
+          transition: opacity 600ms ease;
+        }
+        .splash-video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .splash-watermark-cover {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 120px;
+          height: 50px;
+          background: #0d0015;
+          z-index: 1;
+        }
+      `}</style>
+
+      <div
+        className="splash-root"
         style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
+          opacity: fadingOut ? 0 : 1,
+          pointerEvents: fadingOut ? "none" : "all",
         }}
-      />
-    </div>
+      >
+        <video
+          ref={videoRef}
+          src="/VideoIntro.mov"
+          autoPlay
+          muted
+          playsInline
+          onEnded={dismiss}
+          className="splash-video"
+        />
+
+        {/* Cobre a marca d'água do CapCut */}
+        <div className="splash-watermark-cover" />
+      </div>
+    </>
   );
 }
