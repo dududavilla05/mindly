@@ -72,10 +72,10 @@ export default function SplashScreen() {
           position: absolute;
           top: 0;
           left: 0;
-          width: 120px;
-          height: 60px;
+          width: 150px;
+          height: 80px;
           background: #0d0015;
-          z-index: 1;
+          z-index: 10;
         }
         .splash-fallback {
           position: absolute;
@@ -118,17 +118,15 @@ export default function SplashScreen() {
         ) : (
           <video
             ref={videoRef}
-            src="/VideoIntro.mp4"
+            src="/VideoIntroHQ.mp4"
             autoPlay
             muted
             playsInline
-            loop
             width="100%"
             height="100%"
             onEnded={dismiss}
             onError={() => setVideoFailed(true)}
             className="splash-video"
-            // Atributos extras para Android WebView e iOS
             {...{ "webkit-playsinline": "true", "x5-playsinline": "true" }}
           />
         )}
