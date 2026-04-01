@@ -66,8 +66,8 @@ export default function SplashScreen() {
         }
 
         .sp-logo {
-          width: 180px;
-          height: 180px;
+          width: 280px;
+          height: 280px;
           object-fit: contain;
           opacity: 0;
           animation: sp-logo 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0s forwards;
@@ -115,7 +115,7 @@ export default function SplashScreen() {
         }
 
         @media (max-width: 480px) {
-          .sp-logo  { width: 140px; height: 140px; }
+          .sp-logo  { width: 200px; height: 200px; }
           .sp-title { font-size: 52px; }
           .sp-sub   { font-size: 15px; letter-spacing: 1.5px; text-align: center; padding: 0 24px; }
           .sp-glow  { width: 240px; height: 90px; }
