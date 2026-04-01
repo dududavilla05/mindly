@@ -75,7 +75,7 @@ export default function SplashScreen() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/icons/logo.png"
+            src="/icons/logo-final.png"
             alt="Mindly"
             style={{ width: 88, height: 88, borderRadius: 20, display: "block" }}
           />

@@ -12,7 +12,7 @@ export default function MindlyLogo({ size = "md" }: { size?: "sm" | "md" | "lg" 
   return (
     <div className="flex items-center gap-3">
       <Image
-        src="/icons/logo.png"
+        src="/icons/logo-final.png"
         alt="Mindly"
         width={icon}
         height={icon}
