@@ -12,7 +12,9 @@ interface JourneyState {
   objective: string;
   duration_days: number;
   lessons: JourneyLesson[];
-  completed_days: number[];
+  completed_days: number;        // integer count stored in DB
+  streak: number;                // integer stored in DB
+  completed_day_list: number[];  // jsonb array: which days are done
 }
 
 interface JourneyProps {
@@ -21,7 +23,7 @@ interface JourneyProps {
   supabase?: SupabaseClientType | null;
   onBack: () => void;
   initialJourney?: JourneyItem | null;
-  onLessonGenerated: (lesson: LessonContent, subject: string) => void;
+  onLessonGenerated: (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string) => void;
   onSaved?: () => void;
 }
 
@@ -39,10 +41,10 @@ const DURATION_OPTIONS: { value: 7 | 15 | 30; label: string; desc: string; emoji
   { value: 30, label: "30 dias", desc: "Domínio profundo",     emoji: "🏆" },
 ];
 
-function calcStreak(completedDays: number[], totalDays: number): number {
+function calcStreak(completedList: number[], totalDays: number): number {
   let s = 0;
   for (let d = 1; d <= totalDays; d++) {
-    if (completedDays.includes(d)) s++;
+    if (completedList.includes(d)) s++;
     else break;
   }
   return s;
@@ -61,7 +63,12 @@ export default function Journey({
     (initialJourney?.duration_days as 7 | 15 | 30) ?? 7
   );
   const [journey, setJourney] = useState<JourneyState | null>(
-    initialJourney ? { ...initialJourney } : null
+    initialJourney ? {
+      ...initialJourney,
+      completed_day_list: initialJourney.completed_day_list ?? [],
+      completed_days: initialJourney.completed_days ?? 0,
+      streak: initialJourney.streak ?? 0,
+    } : null
   );
   const [error, setError] = useState("");
   const [saveWarning, setSaveWarning] = useState("");
@@ -69,9 +76,9 @@ export default function Journey({
   const [celebratingDay, setCelebratingDay] = useState<number | null>(null);
 
   const progress = journey
-    ? Math.round((journey.completed_days.length / journey.duration_days) * 100)
+    ? Math.round((journey.completed_days / journey.duration_days) * 100)
     : 0;
-  const streak = journey ? calcStreak(journey.completed_days, journey.duration_days) : 0;
+  const streak = journey ? calcStreak(journey.completed_day_list, journey.duration_days) : 0;
 
   const handleCreate = useCallback(async () => {
     if (!objective.trim()) return;
@@ -92,14 +99,15 @@ export default function Journey({
         objective: data.objective,
         duration_days: data.duration_days,
         lessons: data.lessons,
-        completed_days: [],
+        completed_days: 0,
+        streak: 0,
+        completed_day_list: [],
       };
       setJourney(newJourney);
       setPhase("plan");
 
-      // Save to Supabase
       if (userId && supabase) {
-        console.log("[Journey] Salvando jornada para userId:", userId);
+        console.log("[Journey] Salvando para userId:", userId);
         const { data: saved, error: saveError } = await supabase
           .from("journeys")
           .insert({
@@ -108,21 +116,23 @@ export default function Journey({
             objective: newJourney.objective,
             duration_days: newJourney.duration_days,
             lessons: newJourney.lessons,
-            completed_days: [],
+            completed_days: 0,
+            streak: 0,
+            completed_day_list: [],
           })
           .select("id")
           .single();
 
         if (saveError) {
-          console.error("[Journey] Erro ao salvar no Supabase:", saveError);
-          setSaveWarning(`Jornada gerada, mas não foi salva no histórico: ${saveError.message}`);
+          console.error("[Journey] Erro Supabase ao salvar:", saveError);
+          setSaveWarning(`Jornada gerada, mas não salva: ${saveError.message}`);
         } else if (saved?.id) {
-          console.log("[Journey] Salvo com id:", saved.id);
+          console.log("[Journey] Salvo, id:", saved.id);
           setJourney(prev => prev ? { ...prev, id: saved.id } : prev);
           onSaved?.();
         }
       } else {
-        console.warn("[Journey] supabase ou userId ausente — jornada não salva.", { userId, hasSupabase: !!supabase });
+        console.warn("[Journey] sem supabase/userId — não salvo", { userId, hasSupabase: !!supabase });
         setSaveWarning("Faça login para salvar sua jornada no histórico.");
       }
     } catch (e) {
@@ -134,12 +144,19 @@ export default function Journey({
 
   const toggleDay = useCallback(async (day: number) => {
     if (!journey) return;
-    const isCompleting = !journey.completed_days.includes(day);
-    const newCompleted = isCompleting
-      ? [...journey.completed_days, day]
-      : journey.completed_days.filter(d => d !== day);
+    const isCompleting = !journey.completed_day_list.includes(day);
+    const newList = isCompleting
+      ? [...journey.completed_day_list, day]
+      : journey.completed_day_list.filter(d => d !== day);
+    const newCount = newList.length;
+    const newStreak = calcStreak(newList, journey.duration_days);
 
-    setJourney(prev => prev ? { ...prev, completed_days: newCompleted } : prev);
+    setJourney(prev => prev ? {
+      ...prev,
+      completed_day_list: newList,
+      completed_days: newCount,
+      streak: newStreak,
+    } : prev);
 
     if (isCompleting) {
       setCelebratingDay(day);
@@ -149,7 +166,7 @@ export default function Journey({
     if (journey.id && supabase) {
       const { error: updErr } = await supabase
         .from("journeys")
-        .update({ completed_days: newCompleted })
+        .update({ completed_days: newCount, streak: newStreak, completed_day_list: newList })
         .eq("id", journey.id);
       if (updErr) console.error("[Journey] Erro ao atualizar progresso:", updErr);
     }
@@ -167,13 +184,13 @@ export default function Journey({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar lição");
-      onLessonGenerated(data.lesson as LessonContent, lesson.title);
+      onLessonGenerated(data.lesson as LessonContent, lesson.title, lesson.day, journey?.title);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao gerar lição");
     } finally {
       setLoadingLessonDay(null);
     }
-  }, [loadingLessonDay, onLessonGenerated]);
+  }, [loadingLessonDay, journey, onLessonGenerated]);
 
   const handleNewJourney = () => {
     setPhase("form");
@@ -184,7 +201,7 @@ export default function Journey({
     setSaveWarning("");
   };
 
-  /* ── Upsell (não-Max) ── */
+  /* ── Upsell ── */
   if (!isMax) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6" style={{ background: "#0f0a1e" }}>
@@ -194,11 +211,8 @@ export default function Journey({
           A Jornada de Aprendizado é exclusiva para usuários do plano{" "}
           <strong className="text-white">Max</strong>. Crie planos de estudos com IA e acompanhe seu progresso dia a dia.
         </p>
-        <a
-          href="/planos"
-          className="px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
-          style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
-        >
+        <a href="/planos" className="px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
+          style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}>
           Ver planos
         </a>
         <button onClick={onBack} className="text-sm text-[#7a6a9a] hover:text-white transition-colors">
@@ -208,24 +222,16 @@ export default function Journey({
     );
   }
 
-  /* ── Loading overlay ── */
-  if (phase === "loading") {
-    return <GeneratingOverlay phases={JOURNEY_PHASES} />;
-  }
+  if (phase === "loading") return <GeneratingOverlay phases={JOURNEY_PHASES} />;
 
   /* ── Formulário ── */
   if (phase === "form") {
     return (
       <div className="flex flex-col min-h-screen" style={{ background: "#0f0a1e" }}>
-        <header
-          className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0"
-          style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}
-        >
-          <button
-            onClick={onBack}
-            className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors"
-            style={{ background: "rgba(124,31,255,0.1)" }}
-          >
+        <header className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0"
+          style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}>
+          <button onClick={onBack} className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors"
+            style={{ background: "rgba(124,31,255,0.1)" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
@@ -235,31 +241,19 @@ export default function Journey({
         </header>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-10">
-          <div
-            className="w-full max-w-lg flex flex-col gap-6 rounded-3xl p-6 sm:p-8"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(124,31,255,0.25)",
-              boxShadow: "0 8px 40px rgba(124,31,255,0.15)",
-            }}
-          >
+          <div className="w-full max-w-lg flex flex-col gap-6 rounded-3xl p-6 sm:p-8"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(124,31,255,0.25)", boxShadow: "0 8px 40px rgba(124,31,255,0.15)" }}>
             <div className="flex flex-col items-center gap-2 text-center">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-                style={{ background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.2))", border: "1px solid rgba(124,31,255,0.4)" }}
-              >
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+                style={{ background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.2))", border: "1px solid rgba(124,31,255,0.4)" }}>
                 🧭
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white">Crie sua Jornada</h1>
-              <p className="text-sm text-[#a78bca]">
-                Defina um objetivo e a IA monta um plano de estudos progressivo para você
-              </p>
+              <p className="text-sm text-[#a78bca]">Defina um objetivo e a IA monta um plano de estudos progressivo para você</p>
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-[#c39dff] uppercase tracking-widest">
-                Qual é seu objetivo?
-              </label>
+              <label className="text-xs font-semibold text-[#c39dff] uppercase tracking-widest">Qual é seu objetivo?</label>
               <textarea
                 value={objective}
                 onChange={e => { setObjective(e.target.value); setError(""); }}
@@ -274,23 +268,15 @@ export default function Journey({
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-[#c39dff] uppercase tracking-widest">
-                Duração da jornada
-              </label>
+              <label className="text-xs font-semibold text-[#c39dff] uppercase tracking-widest">Duração da jornada</label>
               <div className="grid grid-cols-3 gap-2">
                 {DURATION_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setDurationDays(opt.value)}
+                  <button key={opt.value} onClick={() => setDurationDays(opt.value)}
                     className="flex flex-col items-center gap-1 py-3 rounded-xl transition-all hover:scale-[1.02]"
                     style={durationDays === opt.value ? {
                       background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.2))",
                       border: "1px solid rgba(124,31,255,0.6)",
-                    } : {
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(124,31,255,0.15)",
-                    }}
-                  >
+                    } : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(124,31,255,0.15)" }}>
                     <span className="text-lg">{opt.emoji}</span>
                     <span className={`font-bold text-sm ${durationDays === opt.value ? "text-white" : "text-[#7a6a9a]"}`}>{opt.label}</span>
                     <span className={`text-[10px] text-center ${durationDays === opt.value ? "text-[#c39dff]" : "text-[#4a3870]"}`}>{opt.desc}</span>
@@ -306,12 +292,9 @@ export default function Journey({
               </div>
             )}
 
-            <button
-              onClick={handleCreate}
-              disabled={!objective.trim()}
+            <button onClick={handleCreate} disabled={!objective.trim()}
               className="w-full py-4 rounded-2xl font-bold text-base text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)", boxShadow: "0 4px 20px rgba(124,31,255,0.4)" }}
-            >
+              style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)", boxShadow: "0 4px 20px rgba(124,31,255,0.4)" }}>
               <span className="flex items-center justify-center gap-2">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -325,76 +308,45 @@ export default function Journey({
     );
   }
 
-  /* ── Plano da jornada ── */
+  /* ── Plano ── */
   const isComplete = progress === 100;
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: "#0f0a1e" }}>
-      {/* Header */}
-      <header
-        className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0 sticky top-0 z-10"
-        style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}
-      >
-        <button
-          onClick={onBack}
-          className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors shrink-0"
-          style={{ background: "rgba(124,31,255,0.1)" }}
-        >
+      <header className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0 sticky top-0 z-10"
+        style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}>
+        <button onClick={onBack} className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors shrink-0"
+          style={{ background: "rgba(124,31,255,0.1)" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
         <span className="text-lg shrink-0">{isComplete ? "🏆" : "🧭"}</span>
         <span className="text-white font-semibold text-sm truncate flex-1 min-w-0">{journey?.title ?? "Jornada"}</span>
-        <button
-          onClick={handleNewJourney}
-          className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all"
-          style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
-        >
+        <button onClick={handleNewJourney} className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all"
+          style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}>
           + Nova
         </button>
       </header>
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5 pb-12">
-
-        {/* ── Hero Banner ── */}
-        <div
-          className="rounded-3xl overflow-hidden relative"
+        {/* Hero Banner */}
+        <div className="rounded-3xl overflow-hidden relative"
           style={{
             background: isComplete
               ? "linear-gradient(135deg, #052e16 0%, #14532d 50%, #052e16 100%)"
               : "linear-gradient(135deg, #13082e 0%, #2a0f60 50%, #13082e 100%)",
             border: `1px solid ${isComplete ? "rgba(34,197,94,0.4)" : "rgba(124,31,255,0.4)"}`,
-          }}
-        >
-          {/* Background orb */}
+          }}>
           <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full pointer-events-none"
-            style={{
-              background: isComplete
-                ? "radial-gradient(circle, rgba(34,197,94,0.3) 0%, transparent 70%)"
-                : "radial-gradient(circle, rgba(124,31,255,0.35) 0%, transparent 70%)",
-              filter: "blur(24px)",
-            }}
-          />
+            style={{ background: isComplete ? "radial-gradient(circle, rgba(34,197,94,0.3) 0%, transparent 70%)" : "radial-gradient(circle, rgba(124,31,255,0.35) 0%, transparent 70%)", filter: "blur(24px)" }} />
           <div className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full pointer-events-none"
-            style={{
-              background: isComplete
-                ? "radial-gradient(circle, rgba(74,222,128,0.2) 0%, transparent 70%)"
-                : "radial-gradient(circle, rgba(166,106,255,0.25) 0%, transparent 70%)",
-              filter: "blur(20px)",
-            }}
-          />
+            style={{ background: isComplete ? "radial-gradient(circle, rgba(74,222,128,0.2) 0%, transparent 70%)" : "radial-gradient(circle, rgba(166,106,255,0.25) 0%, transparent 70%)", filter: "blur(20px)" }} />
 
           <div className="relative p-5 sm:p-6 flex flex-col gap-4">
-            {/* Title row */}
             <div className="flex items-start gap-3">
-              <div
-                className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-                style={{
-                  background: isComplete ? "rgba(34,197,94,0.2)" : "rgba(124,31,255,0.2)",
-                  border: `1px solid ${isComplete ? "rgba(34,197,94,0.4)" : "rgba(124,31,255,0.4)"}`,
-                }}
-              >
+              <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                style={{ background: isComplete ? "rgba(34,197,94,0.2)" : "rgba(124,31,255,0.2)", border: `1px solid ${isComplete ? "rgba(34,197,94,0.4)" : "rgba(124,31,255,0.4)"}` }}>
                 {isComplete ? "🏆" : "🧭"}
               </div>
               <div className="flex-1 min-w-0">
@@ -403,10 +355,9 @@ export default function Journey({
               </div>
             </div>
 
-            {/* Stats row */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { value: journey?.completed_days.length ?? 0, label: "Dias feitos", color: "#c39dff" },
+                { value: journey?.completed_days ?? 0, label: "Dias feitos", color: "#c39dff" },
                 { value: `${progress}%`, label: "Progresso", color: isComplete ? "#4ade80" : "#a78bca" },
                 { value: streak > 0 ? `${streak}🔥` : "0", label: "Streak", color: streak > 0 ? "#fb923c" : "#4a3870" },
               ].map(stat => (
@@ -418,35 +369,27 @@ export default function Journey({
               ))}
             </div>
 
-            {/* Progress bar */}
             <div className="flex flex-col gap-1.5">
               <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.3)" }}>
-                <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
+                <div className="h-full rounded-full transition-all duration-700 ease-out"
                   style={{
                     width: `${progress}%`,
-                    background: isComplete
-                      ? "linear-gradient(90deg, #22c55e, #4ade80, #86efac)"
-                      : "linear-gradient(90deg, #7c1fff, #a66aff, #c39dff)",
-                    boxShadow: isComplete
-                      ? "0 0 12px rgba(34,197,94,0.5)"
-                      : "0 0 12px rgba(124,31,255,0.5)",
-                  }}
-                />
+                    background: isComplete ? "linear-gradient(90deg, #22c55e, #4ade80, #86efac)" : "linear-gradient(90deg, #7c1fff, #a66aff, #c39dff)",
+                    boxShadow: isComplete ? "0 0 12px rgba(34,197,94,0.5)" : "0 0 12px rgba(124,31,255,0.5)",
+                  }} />
               </div>
               <div className="flex justify-between text-[10px]">
                 <span style={{ color: isComplete ? "#4ade80" : "#5c3d8a" }}>
                   {isComplete ? "🎉 Jornada concluída!" : `${journey?.duration_days} dias totais`}
                 </span>
                 <span className="text-[#4a3870]">
-                  {journey ? journey.duration_days - journey.completed_days.length : 0} restantes
+                  {journey ? journey.duration_days - journey.completed_days : 0} restantes
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Avisos */}
         {saveWarning && (
           <div className="flex items-start gap-2 px-4 py-3 rounded-xl text-xs text-yellow-300"
             style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)" }}>
@@ -464,59 +407,32 @@ export default function Journey({
           </div>
         )}
 
-        {/* ── Lista de lições ── */}
+        {/* Lista de lições */}
         <div className="flex flex-col gap-3">
           <p className="text-xs font-semibold text-[#4a3870] uppercase tracking-widest px-1">
             Plano de estudos · {journey?.duration_days} dias
           </p>
-
           {journey?.lessons.map((lesson, idx) => {
-            const isDone = journey.completed_days.includes(lesson.day);
+            const isDone = journey.completed_day_list.includes(lesson.day);
             const isLoadingThis = loadingLessonDay === lesson.day;
             const isCelebrating = celebratingDay === lesson.day;
-            const isNext = !isDone && idx === journey.lessons.findIndex(l => !journey.completed_days.includes(l.day));
+            const isNext = !isDone && idx === journey.lessons.findIndex(l => !journey.completed_day_list.includes(l.day));
 
             return (
-              <div
-                key={lesson.day}
-                className="rounded-2xl transition-all duration-300"
+              <div key={lesson.day} className="rounded-2xl transition-all duration-300"
                 style={{
-                  background: isCelebrating
-                    ? "rgba(34,197,94,0.15)"
-                    : isDone
-                    ? "rgba(34,197,94,0.06)"
-                    : isNext
-                    ? "rgba(124,31,255,0.1)"
-                    : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${
-                    isCelebrating
-                      ? "rgba(34,197,94,0.5)"
-                      : isDone
-                      ? "rgba(34,197,94,0.2)"
-                      : isNext
-                      ? "rgba(124,31,255,0.3)"
-                      : "rgba(124,31,255,0.1)"
-                  }`,
-                  boxShadow: isCelebrating
-                    ? "0 0 20px rgba(34,197,94,0.25)"
-                    : isNext
-                    ? "0 0 12px rgba(124,31,255,0.1)"
-                    : "none",
+                  background: isCelebrating ? "rgba(34,197,94,0.15)" : isDone ? "rgba(34,197,94,0.06)" : isNext ? "rgba(124,31,255,0.1)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${isCelebrating ? "rgba(34,197,94,0.5)" : isDone ? "rgba(34,197,94,0.2)" : isNext ? "rgba(124,31,255,0.3)" : "rgba(124,31,255,0.1)"}`,
+                  boxShadow: isCelebrating ? "0 0 20px rgba(34,197,94,0.25)" : isNext ? "0 0 12px rgba(124,31,255,0.1)" : "none",
                   transform: isCelebrating ? "scale(1.01)" : "scale(1)",
-                }}
-              >
+                }}>
                 <div className="p-4 flex items-start gap-3">
-                  {/* Day number circle */}
-                  <div
-                    className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm transition-all duration-300"
-                    style={
-                      isDone
-                        ? { background: "rgba(34,197,94,0.2)", border: "1.5px solid rgba(34,197,94,0.5)", color: "#4ade80" }
-                        : isNext
-                        ? { background: "rgba(124,31,255,0.25)", border: "1.5px solid rgba(124,31,255,0.5)", color: "#c39dff" }
-                        : { background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(124,31,255,0.12)", color: "#4a3870" }
-                    }
-                  >
+                  <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm transition-all duration-300"
+                    style={isDone
+                      ? { background: "rgba(34,197,94,0.2)", border: "1.5px solid rgba(34,197,94,0.5)", color: "#4ade80" }
+                      : isNext
+                      ? { background: "rgba(124,31,255,0.25)", border: "1.5px solid rgba(124,31,255,0.5)", color: "#c39dff" }
+                      : { background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(124,31,255,0.12)", color: "#4a3870" }}>
                     {isDone ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <path d="M20 6L9 17l-5-5" />
@@ -524,26 +440,19 @@ export default function Journey({
                     ) : lesson.day}
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {isNext && !isDone && (
                         <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-                          style={{ background: "rgba(124,31,255,0.2)", color: "#a78bca" }}>
-                          Próximo
-                        </span>
+                          style={{ background: "rgba(124,31,255,0.2)", color: "#a78bca" }}>Próximo</span>
                       )}
                       {isDone && (
                         <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-                          style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>
-                          Concluído
-                        </span>
+                          style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>Concluído</span>
                       )}
                     </div>
-                    <h3
-                      className="text-sm font-semibold leading-snug"
-                      style={{ color: isDone ? "#86efac" : isNext ? "#e2d9f5" : "#7a6a9a" }}
-                    >
+                    <h3 className="text-sm font-semibold leading-snug"
+                      style={{ color: isDone ? "#86efac" : isNext ? "#e2d9f5" : "#7a6a9a" }}>
                       {lesson.title}
                     </h3>
                     <p className="text-xs leading-relaxed" style={{ color: isDone ? "#4ade80aa" : "#4a3870" }}>
@@ -551,40 +460,26 @@ export default function Journey({
                     </p>
                   </div>
 
-                  {/* Action column */}
                   <div className="shrink-0 flex flex-col items-end gap-2">
-                    {/* Estudar button */}
-                    <button
-                      onClick={() => studyLesson(lesson)}
+                    <button onClick={() => studyLesson(lesson)}
                       disabled={isLoadingThis || loadingLessonDay !== null}
                       className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         background: isDone ? "rgba(34,197,94,0.12)" : "rgba(124,31,255,0.18)",
                         border: `1px solid ${isDone ? "rgba(34,197,94,0.3)" : "rgba(124,31,255,0.35)"}`,
                         color: isDone ? "#86efac" : "#c39dff",
-                      }}
-                    >
+                      }}>
                       {isLoadingThis ? (
                         <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" />
                         </svg>
                       ) : isDone ? "Rever" : "Estudar"}
                     </button>
-
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleDay(lesson.day)}
+                    <button onClick={() => toggleDay(lesson.day)}
                       className="flex items-center gap-1 text-[10px] transition-all hover:scale-105"
-                      style={{ color: isDone ? "#4ade80" : "#3a2a5a" }}
-                      aria-label={isDone ? "Desmarcar" : "Marcar como concluído"}
-                    >
-                      <div
-                        className="w-4 h-4 rounded flex items-center justify-center transition-all"
-                        style={{
-                          background: isDone ? "rgba(34,197,94,0.25)" : "rgba(124,31,255,0.08)",
-                          border: `1.5px solid ${isDone ? "rgba(34,197,94,0.6)" : "rgba(124,31,255,0.2)"}`,
-                        }}
-                      >
+                      style={{ color: isDone ? "#4ade80" : "#3a2a5a" }}>
+                      <div className="w-4 h-4 rounded flex items-center justify-center transition-all"
+                        style={{ background: isDone ? "rgba(34,197,94,0.25)" : "rgba(124,31,255,0.08)", border: `1.5px solid ${isDone ? "rgba(34,197,94,0.6)" : "rgba(124,31,255,0.2)"}` }}>
                         {isDone && (
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3">
                             <path d="M20 6L9 17l-5-5" />

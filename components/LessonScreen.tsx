@@ -13,6 +13,7 @@ interface LessonScreenProps {
   onNewLesson: () => void;
   onOpenHistory?: () => void;
   plan?: string | null;
+  journeyContext?: { day: number; journeyTitle: string } | null;
 }
 
 async function exportToPDF(lesson: LessonContent, subject: string) {
@@ -141,7 +142,7 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
   }
 }
 
-export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan }: LessonScreenProps) {
+export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan, journeyContext }: LessonScreenProps) {
   const [exporting, setExporting] = useState(false);
   const [mentorOpen, setMentorOpen] = useState(false);
   const canExport = plan === "pro" || plan === "max";
@@ -205,13 +206,41 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
               boxShadow: "0 0 12px rgba(124,31,255,0.3)",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-            Nova lição
+            {journeyContext ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                </svg>
+                Continuar Jornada
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                Nova lição
+              </>
+            )}
           </button>
         </div>
       </header>
+
+      {/* Journey context banner */}
+      {journeyContext && (
+        <div
+          className="relative z-10 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold"
+          style={{
+            background: "linear-gradient(90deg, rgba(124,31,255,0.25) 0%, rgba(166,106,255,0.2) 50%, rgba(124,31,255,0.25) 100%)",
+            borderBottom: "1px solid rgba(124,31,255,0.35)",
+          }}
+        >
+          <span style={{ color: "#c39dff" }}>📍</span>
+          <span style={{ color: "#c39dff" }}>
+            Dia {journeyContext.day} da Jornada:&nbsp;
+            <span className="text-white font-bold">{journeyContext.journeyTitle}</span>
+          </span>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="relative z-10 flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6 animate-slide-up">
@@ -468,7 +497,7 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
           )}
         </div>
 
-        {/* New lesson CTA */}
+        {/* New lesson / Continue journey CTA */}
         <button
           onClick={onNewLesson}
           className="w-full py-4 rounded-2xl font-bold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
@@ -477,10 +506,21 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
             boxShadow: "0 4px 20px rgba(124, 31, 255, 0.4)",
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-          Aprender mais um assunto
+          {journeyContext ? (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+              </svg>
+              Continuar Jornada
+            </>
+          ) : (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Aprender mais um assunto
+            </>
+          )}
         </button>
 
         <p className="text-center text-xs text-[#3d1f6e] pb-4">

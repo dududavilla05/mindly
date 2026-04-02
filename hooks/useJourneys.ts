@@ -13,7 +13,9 @@ export interface JourneyItem {
   objective: string;
   duration_days: number;
   lessons: JourneyLesson[];
-  completed_days: number[];
+  completed_days: number;        // integer count
+  streak: number;                // integer
+  completed_day_list: number[];  // jsonb array of completed day numbers
   created_at: string;
 }
 
@@ -30,7 +32,7 @@ export function useJourneys(
     setLoading(true);
     supabase
       .from("journeys")
-      .select("id, title, objective, duration_days, lessons, completed_days, created_at")
+      .select("id, title, objective, duration_days, lessons, completed_days, streak, completed_day_list, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20)

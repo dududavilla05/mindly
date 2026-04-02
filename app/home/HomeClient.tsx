@@ -41,6 +41,8 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [journeyKey, setJourneyKey] = useState(0);
   const [currentJourney, setCurrentJourney] = useState<JourneyItem | null>(null);
   const [returnScreen, setReturnScreen] = useState<AppScreen>("home");
+  const [journeyContext, setJourneyContext] = useState<{ day: number; journeyTitle: string } | null>(null);
+  const [lessonFromJourney, setLessonFromJourney] = useState(false);
 
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
   useEffect(() => { setSupabase(createClient()); }, []);
@@ -68,6 +70,8 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
   const handleLessonGenerated = (lesson: LessonContent, subject: string) => {
     setReturnScreen("home");
+    setLessonFromJourney(false);
+    setJourneyContext(null);
     setCurrentLesson(lesson);
     setCurrentSubject(subject);
     setScreen("lesson");
@@ -76,8 +80,10 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     refreshProfile();
   };
 
-  const handleLessonFromJourney = (lesson: LessonContent, subject: string) => {
+  const handleLessonFromJourney = (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string) => {
     setReturnScreen("journey");
+    setLessonFromJourney(true);
+    setJourneyContext(journeyDay != null && journeyTitle ? { day: journeyDay, journeyTitle } : null);
     setCurrentLesson(lesson);
     setCurrentSubject(subject);
     setScreen("lesson");
@@ -162,9 +168,10 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
               lesson={currentLesson}
               subject={currentSubject}
               onBack={handleBack}
-              onNewLesson={handleNewLesson}
+              onNewLesson={lessonFromJourney ? handleBack : handleNewLesson}
               onOpenHistory={() => setDrawerOpen(true)}
               plan={profile?.plan}
+              journeyContext={journeyContext}
             />
           </div>
         ) : screen === "mindmap" ? (
