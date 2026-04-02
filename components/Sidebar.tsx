@@ -200,7 +200,7 @@ export default function Sidebar({
                 <p className="text-xs text-center text-white/25 mt-6">Nenhuma jornada criada</p>
               ) : (
                 journeys.map((item) => {
-                  const pct = Math.round((item.completed_days.length / item.duration_days) * 100);
+                  const pct = Math.round((item.completed_days / item.duration_days) * 100);
                   return (
                     <button
                       key={item.id}
