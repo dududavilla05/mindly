@@ -226,6 +226,10 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         mindMapsLoading={mindMapsLoading}
         onSelectMindMap={handleSelectMindMap}
         onNewMindMap={() => handleOpenMindMap()}
+        journeys={journeys}
+        journeysLoading={journeysLoading}
+        onSelectJourney={handleOpenJourney}
+        onNewJourney={() => handleOpenJourney()}
         plan={profile?.plan}
       />
     </div>
