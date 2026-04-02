@@ -161,7 +161,7 @@ export default function GeneratingOverlay({ phases = DEFAULT_PHASES }: Generatin
               transition: "opacity 0.35s ease, transform 0.35s ease",
             }}
           >
-            {PHASES[phaseIndex]}
+            {phases[phaseIndex]}
           </p>
         </div>
 
