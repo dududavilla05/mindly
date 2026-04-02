@@ -221,27 +221,40 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
       });
     }
 
+    const isJourney = !!(journeyMode && journeyContext);
+    console.log(`[generate-lesson] mode=${isJourney ? "journey" : "normal"} subject="${subject}" maxTokens=${isJourney ? 4000 : 1500}`);
+
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: journeyMode ? 5000 : 1500,
-      temperature: journeyMode ? 0.8 : 1.0,
-      system: journeyMode ? JOURNEY_SYSTEM_PROMPT : SYSTEM_PROMPT,
+      max_tokens: isJourney ? 4000 : 1500,
+      temperature: isJourney ? 0.8 : 1.0,
+      system: isJourney ? JOURNEY_SYSTEM_PROMPT : SYSTEM_PROMPT,
       messages: [{ role: "user", content: userContent }],
     });
 
     const textContent = response.content.find((c) => c.type === "text");
     if (!textContent || textContent.type !== "text") {
+      console.error("[generate-lesson] No text content in response. stop_reason:", response.stop_reason);
       throw new Error("Resposta inválida da IA");
     }
 
+    console.log(`[generate-lesson] raw response (first 300 chars): ${textContent.text.trim().substring(0, 300)}`);
+
     let lessonData;
     try {
-      const jsonText = textContent.text.trim();
+      // Strip markdown code fences if the model wrapped the JSON (e.g. ```json ... ```)
+      let jsonText = textContent.text.trim();
+      jsonText = jsonText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("JSON não encontrado");
+      if (!jsonMatch) {
+        console.error("[generate-lesson] JSON not found in response. Full text:", textContent.text.trim().substring(0, 800));
+        throw new Error("JSON não encontrado na resposta");
+      }
       lessonData = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error("Erro ao processar resposta da IA");
+      console.log("[generate-lesson] parsed OK, title:", lessonData?.title);
+    } catch (parseErr) {
+      console.error("[generate-lesson] JSON parse error:", parseErr, "| raw (800):", textContent.text.trim().substring(0, 800));
+      throw new Error(`Erro ao processar resposta da IA: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
     }
 
     // Salvar histórico
@@ -312,9 +325,10 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
       plan: userProfile?.plan ?? null,
     });
   } catch (error) {
-    console.error("Error generating lesson:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("[generate-lesson] caught error:", errMsg, error);
 
-    if (error instanceof Anthropic.APIConnectionTimeoutError || (error instanceof Error && error.message.toLowerCase().includes("timeout"))) {
+    if (error instanceof Anthropic.APIConnectionTimeoutError || errMsg.toLowerCase().includes("timeout")) {
       return NextResponse.json(
         { error: "A requisição demorou demais. Tente novamente." },
         { status: 504 }
@@ -322,6 +336,7 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
     }
 
     if (error instanceof Anthropic.APIError) {
+      console.error("[generate-lesson] Anthropic API error status:", error.status, "message:", error.message);
       if (error.status === 401) {
         return NextResponse.json(
           { error: "Chave da API não configurada corretamente. Contate o suporte." },
@@ -335,13 +350,13 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
         );
       }
       return NextResponse.json(
-        { error: "Erro ao chamar a IA. Tente novamente." },
+        { error: `Erro ao chamar a IA: ${error.message}` },
         { status: error.status || 500 }
       );
     }
 
     return NextResponse.json(
-      { error: "Ocorreu um erro ao gerar a lição. Tente novamente." },
+      { error: `Erro ao gerar a lição: ${errMsg}` },
       { status: 500 }
     );
   }
