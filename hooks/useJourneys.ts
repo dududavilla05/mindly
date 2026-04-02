@@ -5,6 +5,9 @@ export interface JourneyLesson {
   day: number;
   title: string;
   description: string;
+  estimated_minutes?: number;
+  topics?: string[];
+  difficulty?: "Iniciante" | "Intermediário" | "Avançado";
 }
 
 export interface JourneyItem {

@@ -24,6 +24,7 @@ interface JourneyProps {
   onBack: () => void;
   initialJourney?: JourneyItem | null;
   journeyId?: string;
+  onJourneyCreated?: (id: string) => void;
   onLessonGenerated: (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string, journeyTotalDays?: number) => void;
   onSaved?: () => void;
 }
@@ -52,7 +53,7 @@ function calcStreak(completedList: number[], totalDays: number): number {
 }
 
 export default function Journey({
-  plan, userId, supabase, onBack, initialJourney, journeyId, onLessonGenerated, onSaved,
+  plan, userId, supabase, onBack, initialJourney, journeyId, onJourneyCreated, onLessonGenerated, onSaved,
 }: JourneyProps) {
   const isMax = plan === "max";
 
@@ -155,6 +156,7 @@ export default function Journey({
         } else if (saved?.id) {
           console.log("[Journey] Salvo, id:", saved.id);
           setJourney(prev => prev ? { ...prev, id: saved.id } : prev);
+          onJourneyCreated?.(saved.id);
           onSaved?.();
         }
       } else {
@@ -466,7 +468,7 @@ export default function Journey({
                     ) : lesson.day}
                   </div>
 
-                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       {isNext && !isDone && (
                         <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
@@ -476,6 +478,23 @@ export default function Journey({
                         <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
                           style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>Concluído</span>
                       )}
+                      {lesson.difficulty && (
+                        <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                          style={{
+                            background: lesson.difficulty === "Avançado"
+                              ? "rgba(239,68,68,0.12)"
+                              : lesson.difficulty === "Intermediário"
+                              ? "rgba(245,158,11,0.12)"
+                              : "rgba(34,197,94,0.1)",
+                            color: lesson.difficulty === "Avançado"
+                              ? "#f87171"
+                              : lesson.difficulty === "Intermediário"
+                              ? "#fbbf24"
+                              : "#4ade80",
+                          }}>
+                          {lesson.difficulty}
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-sm font-semibold leading-snug"
                       style={{ color: isDone ? "#86efac" : isNext ? "#e2d9f5" : "#7a6a9a" }}>
@@ -484,6 +503,31 @@ export default function Journey({
                     <p className="text-xs leading-relaxed" style={{ color: isDone ? "#4ade80aa" : "#4a3870" }}>
                       {lesson.description}
                     </p>
+                    {lesson.topics && lesson.topics.length > 0 && (
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        {lesson.topics.map((topic, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <div className="w-1 h-1 rounded-full shrink-0"
+                              style={{ background: isDone ? "#4ade80" : isNext ? "#a66aff" : "#3a2a5a" }} />
+                            <span className="text-[10px] leading-relaxed"
+                              style={{ color: isDone ? "#4ade80bb" : isNext ? "#7a6a9a" : "#3a2a5a" }}>
+                              {topic}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {lesson.estimated_minutes && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          style={{ color: isDone ? "#4ade80" : "#3a2a5a" }}>
+                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span className="text-[10px]" style={{ color: isDone ? "#4ade80bb" : "#3a2a5a" }}>
+                          ~{lesson.estimated_minutes} min
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="shrink-0 flex flex-col items-end gap-2">

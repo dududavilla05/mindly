@@ -32,8 +32,14 @@ Retorne APENAS JSON puro (sem markdown, sem texto extra):
 {
   "title": "Título atrativo e motivador para esta jornada de aprendizado (máx 60 chars)",
   "lessons": [
-    {"day": 1, "title": "Título da lição", "description": "O que será aprendido neste dia (1-2 frases)"},
-    {"day": 2, "title": "...", "description": "..."}
+    {
+      "day": 1,
+      "title": "Título da lição (3-8 palavras, sem 'Dia N:')",
+      "description": "O que será aprendido neste dia (1-2 frases motivadoras e específicas)",
+      "estimated_minutes": 15,
+      "topics": ["Tópico principal 1", "Tópico principal 2", "Tópico principal 3"],
+      "difficulty": "Iniciante"
+    }
   ]
 }
 
@@ -42,11 +48,14 @@ Regras:
 - Progressão lógica: fundamentos → intermediário → avançado
 - Títulos objetivos (3-8 palavras, sem "Dia N:" no título)
 - Descrições motivadoras e específicas (máximo 2 frases)
+- estimated_minutes: tempo realista de estudo (10 a 30 minutos, número inteiro)
+- topics: exatamente 3 tópicos/subtemas que serão abordados naquele dia (strings curtas, máx 40 chars cada)
+- difficulty: uma das três opções exatas — "Iniciante" para os primeiros dias, "Intermediário" para a parte do meio, "Avançado" para os últimos dias
 - Em português brasileiro`;
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 3500,
+      max_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
     });
 

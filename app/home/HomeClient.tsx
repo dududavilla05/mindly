@@ -199,6 +199,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onBack={handleBack}
             initialJourney={currentJourney}
             journeyId={currentJourneyId ?? undefined}
+            onJourneyCreated={setCurrentJourneyId}
             onLessonGenerated={handleLessonFromJourney}
             onSaved={refreshJourneys}
           />
