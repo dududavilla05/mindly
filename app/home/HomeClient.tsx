@@ -7,14 +7,17 @@ import { createClient } from "@/lib/supabase/client";
 import HomeScreen from "@/components/HomeScreen";
 import LessonScreen from "@/components/LessonScreen";
 import MindMap from "@/components/MindMap";
+import Journey from "@/components/Journey";
 import Sidebar from "@/components/Sidebar";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import { useHistory } from "@/hooks/useHistory";
 import { useMindMaps } from "@/hooks/useMindMaps";
+import { useJourneys } from "@/hooks/useJourneys";
 import type { LessonContent } from "@/types/lesson";
 import type { UserProfile } from "@/app/page";
 import type { SupabaseClientType } from "@/lib/supabase/client";
 import type { MindMapItem } from "@/hooks/useMindMaps";
+import type { JourneyItem } from "@/hooks/useJourneys";
 import type { MindMapNode, MindMapEdge } from "@/components/MindMap";
 
 interface HomeClientProps {
@@ -22,7 +25,7 @@ interface HomeClientProps {
   initialProfile: UserProfile | null;
 }
 
-type AppScreen = "home" | "lesson" | "mindmap";
+type AppScreen = "home" | "lesson" | "mindmap" | "journey";
 
 export default function HomeClient({ initialUser, initialProfile }: HomeClientProps) {
   const router = useRouter();
@@ -33,14 +36,18 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"licoes" | "mapas">("licoes");
+  const [sidebarTab, setSidebarTab] = useState<"licoes" | "mapas" | "jornadas">("licoes");
   const [mapKey, setMapKey] = useState(0);
+  const [journeyKey, setJourneyKey] = useState(0);
+  const [currentJourney, setCurrentJourney] = useState<JourneyItem | null>(null);
+  const [returnScreen, setReturnScreen] = useState<AppScreen>("home");
 
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
   useEffect(() => { setSupabase(createClient()); }, []);
 
   const { history, loading: historyLoading, refresh: refreshHistory } = useHistory(supabase, user?.id, profile?.plan);
   const { mindMaps, loading: mindMapsLoading, refresh: refreshMindMaps } = useMindMaps(supabase, user?.id, profile?.plan);
+  const { journeys, loading: journeysLoading, refresh: refreshJourneys } = useJourneys(supabase, user?.id, profile?.plan);
 
   useEffect(() => {
     if (!supabase) return;
@@ -60,12 +67,22 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   };
 
   const handleLessonGenerated = (lesson: LessonContent, subject: string) => {
+    setReturnScreen("home");
     setCurrentLesson(lesson);
     setCurrentSubject(subject);
     setScreen("lesson");
     window.scrollTo({ top: 0, behavior: "smooth" });
     refreshHistory();
     refreshProfile();
+  };
+
+  const handleLessonFromJourney = (lesson: LessonContent, subject: string) => {
+    setReturnScreen("journey");
+    setCurrentLesson(lesson);
+    setCurrentSubject(subject);
+    setScreen("lesson");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    refreshHistory();
   };
 
   const handleSelectHistoryLesson = (item: { subject: string; lesson_data: LessonContent }) => {
@@ -89,7 +106,21 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     handleOpenMindMap({ topic: item.title, nodes: item.nodes, edges: item.edges });
   };
 
-  const handleBack = () => { setScreen("home"); setSidebarTab("licoes"); };
+  const handleBack = () => {
+    const target = returnScreen;
+    setReturnScreen("home");
+    setScreen(target);
+    setSidebarTab(target === "journey" ? "jornadas" : "licoes");
+  };
+
+  const handleOpenJourney = (data?: JourneyItem) => {
+    setCurrentJourney(data ?? null);
+    setJourneyKey(k => k + 1);
+    setScreen("journey");
+    setDrawerOpen(false);
+    setSidebarTab("jornadas");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleNewLesson = () => {
     setScreen("home");
@@ -115,6 +146,10 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         mindMapsLoading={mindMapsLoading}
         onSelectMindMap={handleSelectMindMap}
         onNewMindMap={() => handleOpenMindMap()}
+        journeys={journeys}
+        journeysLoading={journeysLoading}
+        onSelectJourney={handleOpenJourney}
+        onNewJourney={() => handleOpenJourney()}
         plan={profile?.plan}
         activeTab={sidebarTab}
         onTabChange={setSidebarTab}
@@ -143,6 +178,17 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             initialEdges={mindMapData?.edges}
             onSaved={refreshMindMaps}
           />
+        ) : screen === "journey" ? (
+          <Journey
+            key={journeyKey}
+            plan={profile?.plan}
+            userId={user?.id}
+            supabase={supabase}
+            onBack={handleBack}
+            initialJourney={currentJourney}
+            onLessonGenerated={handleLessonFromJourney}
+            onSaved={refreshJourneys}
+          />
         ) : (
           <HomeScreen
             onLessonGenerated={handleLessonGenerated}
@@ -151,6 +197,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onSignOut={handleSignOut}
             onOpenHistory={() => setDrawerOpen(true)}
             onOpenMindMap={() => handleOpenMindMap()}
+            onOpenJourney={() => handleOpenJourney()}
           />
         )}
       </main>

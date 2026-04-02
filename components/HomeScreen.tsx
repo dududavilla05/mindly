@@ -27,6 +27,7 @@ interface HomeScreenProps {
   onSignOut: () => void;
   onOpenHistory?: () => void;
   onOpenMindMap?: () => void;
+  onOpenJourney?: () => void;
 }
 
 export default function HomeScreen({
@@ -36,6 +37,7 @@ export default function HomeScreen({
   onSignOut,
   onOpenHistory,
   onOpenMindMap,
+  onOpenJourney,
 }: HomeScreenProps) {
   const [subject, setSubject] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -534,6 +536,47 @@ export default function HomeScreen({
 
           {/* Overlay de geração */}
           {loading && <GeneratingOverlay />}
+        </div>
+
+        {/* Jornada de Aprendizado */}
+        <div className="w-full animate-fade-in">
+          {profile?.plan === "max" ? (
+            <button
+              onClick={onOpenJourney}
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99]"
+              style={{
+                background: "rgba(124,31,255,0.08)",
+                border: "1px solid rgba(124,31,255,0.25)",
+              }}
+            >
+              <span className="text-2xl">🧭</span>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-white">Jornada de Aprendizado</p>
+                <p className="text-xs text-[#7a6a9a]">Plano de estudos progressivo com IA · até 30 dias</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bca" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          ) : (
+            <div
+              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl cursor-not-allowed"
+              style={{
+                background: "rgba(124,31,255,0.04)",
+                border: "1px solid rgba(124,31,255,0.12)",
+              }}
+            >
+              <span className="text-2xl opacity-40">🧭</span>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-[#4a3870]">Jornada de Aprendizado</p>
+                <p className="text-xs text-[#3a2a5a]">Exclusivo plano Max</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a2a5a" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+          )}
         </div>
 
         {/* Sugestões */}
