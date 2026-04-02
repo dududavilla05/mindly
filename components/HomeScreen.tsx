@@ -181,34 +181,26 @@ export default function HomeScreen({
           className="md:hidden fixed top-0 inset-x-0 z-[9999] animate-fade-in flex flex-col"
           style={{ background: "rgba(15,10,30,0.88)", backdropFilter: "blur(18px)", borderBottom: "1px solid rgba(124,31,255,0.15)" }}
         >
-          {/* Linha 1 — esquerda | centro absoluto | direita */}
-          <div className="relative flex items-center px-4 h-14">
-            {/* Esquerda: Histórico */}
-            <div className="flex items-center">
-              {onOpenHistory ? (
+          {/* Linha 1 — logo à esquerda, ações à direita */}
+          <div className="flex items-center justify-between px-4 h-14">
+            {/* Esquerda: Logo + Mindly */}
+            <MindlyLogo size="xs" />
+
+            {/* Direita: Histórico + Avatar / Entrar */}
+            <div className="flex items-center gap-2">
+              {onOpenHistory && (
                 <button
                   onClick={onOpenHistory}
-                  className="flex items-center justify-center w-10 h-10 rounded-xl text-[#a78bca] hover:text-white transition-all duration-200"
+                  className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-all duration-200"
                   style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
                   aria-label="Histórico"
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                 </button>
-              ) : <div className="w-10" />}
-            </div>
-
-            {/* Centro: Logo — absolutamente centralizado */}
-            <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-              <div className="pointer-events-auto">
-                <MindlyLogo size="sm" />
-              </div>
-            </div>
-
-            {/* Direita: Avatar / Entrar */}
-            <div className="ml-auto flex items-center">
+              )}
               {user ? (
                 <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
               ) : (

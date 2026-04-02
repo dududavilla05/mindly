@@ -1,7 +1,8 @@
 import Image from "next/image";
 
-export default function MindlyLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+export default function MindlyLogo({ size = "md" }: { size?: "xs" | "sm" | "md" | "lg" }) {
   const sizes = {
+    xs: { icon: 30, text: "text-base" },
     sm: { icon: 48, text: "text-xl" },
     md: { icon: 56, text: "text-3xl" },
     lg: { icon: 64, text: "text-4xl" },
