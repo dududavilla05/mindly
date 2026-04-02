@@ -298,9 +298,9 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
             border: "1px solid rgba(255,255,255,0.07)",
           }}
         >
-          <p className="text-[#d4c0f0] leading-relaxed text-base">
-            {lesson.introduction}
-          </p>
+          {lesson.introduction.split("\n\n").map((para, i) => (
+            <p key={i} className="text-[#d4c0f0] leading-relaxed text-base">{para}</p>
+          ))}
         </div>
 
         {/* Highlight */}
@@ -422,6 +422,113 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
             <p className="text-[#a78bca] text-sm leading-relaxed italic">
               {lesson.curiosity}
             </p>
+          </div>
+        )}
+
+        {/* Journey: deep sections */}
+        {lesson.sections && lesson.sections.length > 0 && lesson.sections.map((section, idx) => (
+          <div
+            key={idx}
+            className="rounded-2xl p-5 flex flex-col gap-3"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs"
+                style={{ background: "rgba(124,31,255,0.2)", color: "#a66aff" }}
+              >
+                {idx + 1}
+              </div>
+              <h2 className="text-[#c39dff] font-bold text-sm uppercase tracking-widest">
+                {section.title}
+              </h2>
+            </div>
+            <div className="flex flex-col gap-3">
+              {section.content.split("\n\n").map((para, i) => (
+                <p key={i} className="text-[#d4c0f0] leading-relaxed text-base">{para}</p>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Journey: key points summary */}
+        {lesson.keyPoints && lesson.keyPoints.length > 0 && (
+          <div
+            className="rounded-2xl p-5 flex flex-col gap-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(124,31,255,0.1) 0%, rgba(166,106,255,0.07) 100%)",
+              border: "1px solid rgba(124,31,255,0.25)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(124,31,255,0.25)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="2">
+                  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                </svg>
+              </div>
+              <h2 className="text-[#c39dff] font-bold text-sm uppercase tracking-widest">
+                Pontos-chave desta aula
+              </h2>
+            </div>
+            <div className="flex flex-col gap-2">
+              {lesson.keyPoints.map((point, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div
+                    className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                    style={{ background: "rgba(124,31,255,0.3)", border: "1px solid rgba(124,31,255,0.5)" }}
+                  >
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  </div>
+                  <p className="text-[#d4c0f0] text-sm leading-relaxed">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Journey: next steps */}
+        {lesson.nextSteps && lesson.nextSteps.length > 0 && (
+          <div
+            className="rounded-2xl p-5 flex flex-col gap-3"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(124,31,255,0.2)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(124,31,255,0.15)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a66aff" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </div>
+              <h2 className="text-[#c39dff] font-bold text-sm uppercase tracking-widest">
+                Próximos passos
+              </h2>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {lesson.nextSteps.map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div
+                    className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white mt-0.5"
+                    style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
+                  >
+                    {i + 1}
+                  </div>
+                  <p className="text-[#a78bca] text-sm leading-relaxed">{step}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

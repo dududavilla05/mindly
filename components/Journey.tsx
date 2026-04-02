@@ -208,7 +208,16 @@ export default function Journey({
       const res = await fetch("/api/generate-lesson", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: lesson.title }),
+        body: JSON.stringify({
+          subject: lesson.title,
+          journeyMode: true,
+          journeyContext: {
+            day: lesson.day,
+            totalDays: journey?.duration_days ?? 7,
+            journeyTitle: journey?.title ?? "",
+            journeyObjective: journey?.objective ?? "",
+          },
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar lição");

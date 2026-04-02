@@ -37,6 +37,71 @@ PERGUNTAS DIRETAS — se o input contiver "qual", "como", "onde", "quando", "por
 - howToApplyToday: passos para agir agora ("Acesse X", "Compare A e B no Mercado Livre")
 - NUNCA transforme uma pergunta direta em lição genérica sobre o tema`;
 
+const JOURNEY_SYSTEM_PROMPT = `Você é o Mindly, especialista em criar materiais de estudo profundos e didáticos. Responda em português brasileiro. Retorne APENAS JSON puro, sem markdown, sem blocos de código.
+
+Você vai criar uma AULA COMPLETA de 30 a 45 minutos de leitura e prática real. O conteúdo deve ser denso, detalhado e de altíssima qualidade educacional.
+
+Formato JSON obrigatório (todos os campos são obrigatórios):
+{
+  "title": "Título claro da aula (máx 70 chars)",
+  "category": "Área do conhecimento",
+  "emoji": "emoji representativo",
+  "introduction": "3 a 4 parágrafos separados por \\n\\n. Apresente o tema, contextualize com a jornada, explique por que este conceito é importante e o que o aluno vai dominar ao final desta aula.",
+  "highlight": {
+    "label": "Conceito-chave",
+    "text": "A ideia mais importante desta aula em 2 frases impactantes e memoráveis."
+  },
+  "practicalExample": {
+    "title": "Exemplo Prático Detalhado",
+    "content": "Um cenário real completo com personagem, situação, números, decisões e resultado. Mínimo 150 palavras. Use contexto brasileiro quando possível."
+  },
+  "howToApplyToday": [
+    "Exercício prático 1: descrição detalhada de como executar — mínimo 2 frases",
+    "Exercício prático 2: descrição detalhada de como executar — mínimo 2 frases",
+    "Exercício prático 3: descrição detalhada de como executar — mínimo 2 frases",
+    "Exercício prático 4: descrição detalhada de como executar — mínimo 2 frases"
+  ],
+  "curiosity": "Fato surpreendente, dado estatístico ou história pouco conhecida relacionada ao tema.",
+  "sections": [
+    {
+      "title": "Fundamentos Essenciais",
+      "content": "Explicação profunda dos conceitos base. Mínimo 200 palavras. Inclua definições precisas, por que existem, como funcionam internamente, e as ideias equivocadas mais comuns que as pessoas têm sobre este tema."
+    },
+    {
+      "title": "Como Funciona na Prática",
+      "content": "Explicação detalhada do funcionamento com analogias do dia a dia, passo a passo do processo, variações e casos especiais. Mínimo 200 palavras."
+    },
+    {
+      "title": "Erros Comuns e Como Evitar",
+      "content": "Os 3 a 5 erros mais frequentes que iniciantes cometem neste tema, explicando por que acontecem e como evitar cada um. Use exemplos concretos. Mínimo 150 palavras."
+    },
+    {
+      "title": "Aplicação Avançada",
+      "content": "Técnicas, estratégias ou perspectivas que separam iniciantes de pessoas experientes neste tema. O que os especialistas fazem diferente. Mínimo 150 palavras."
+    }
+  ],
+  "keyPoints": [
+    "Ponto 1: resumo completo em 1-2 frases",
+    "Ponto 2: resumo completo em 1-2 frases",
+    "Ponto 3: resumo completo em 1-2 frases",
+    "Ponto 4: resumo completo em 1-2 frases",
+    "Ponto 5: resumo completo em 1-2 frases"
+  ],
+  "nextSteps": [
+    "O que praticar ainda hoje para consolidar o aprendizado",
+    "O que pesquisar ou explorar para ir além desta aula",
+    "Como este conhecimento se conecta com o próximo dia da jornada"
+  ],
+  "isJourneyLesson": true
+}
+
+Regras absolutas:
+- NUNCA use asteriscos, hashes, underlines ou qualquer marcação markdown dentro das strings
+- Use ponto e vírgula, dois-pontos e parênteses normalmente para estruturar texto corrido
+- Todo conteúdo em português brasileiro claro e profissional
+- Exemplos reais com nomes, números e contexto brasileiro quando relevante
+- O conteúdo total deve ser suficiente para 30-45 minutos de estudo real`;
+
 const FREE_PLAN_LIMIT = 10;
 
 export async function POST(request: NextRequest) {
@@ -61,7 +126,7 @@ export async function POST(request: NextRequest) {
     const client = new Anthropic({ apiKey });
 
     const body: GenerateLessonRequest = await request.json();
-    const { subject, imageBase64, imageMimeType } = body;
+    const { subject, imageBase64, imageMimeType, journeyMode, journeyContext } = body;
 
     if (!subject && !imageBase64) {
       return NextResponse.json(
@@ -119,7 +184,20 @@ export async function POST(request: NextRequest) {
     type ContentBlockParam = Anthropic.Messages.ContentBlockParam;
     const userContent: ContentBlockParam[] = [];
 
-    if (imageBase64 && imageMimeType) {
+    if (journeyMode && journeyContext) {
+      const { day, totalDays, journeyTitle, journeyObjective } = journeyContext;
+      userContent.push({
+        type: "text",
+        text: `Jornada: "${journeyTitle}"${journeyObjective ? ` — Objetivo: ${journeyObjective}` : ""}
+Dia ${day} de ${totalDays}: ${subject}
+
+Crie uma aula completa e aprofundada sobre "${subject}" para o Dia ${day} desta jornada de ${totalDays} dias.
+${day > 1 ? `O aluno já completou ${day - 1} dia(s) de estudo nesta jornada, então pode referenciar conceitos progressivos.` : "Este é o primeiro dia, então comece pelos fundamentos essenciais."}
+${day === totalDays ? "Este é o último dia da jornada — conclua com uma visão completa do que foi aprendido e próximos passos além da jornada." : ""}
+
+Gere o JSON completo conforme o formato especificado, com conteúdo suficiente para 30-45 minutos de estudo real.`,
+      });
+    } else if (imageBase64 && imageMimeType) {
       const validMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
       type ImageMimeType = typeof validMimeTypes[number];
       const mimeType: ImageMimeType = validMimeTypes.includes(imageMimeType as ImageMimeType)
@@ -145,9 +223,9 @@ export async function POST(request: NextRequest) {
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1500,
-      temperature: 1.0,
-      system: SYSTEM_PROMPT,
+      max_tokens: journeyMode ? 5000 : 1500,
+      temperature: journeyMode ? 0.8 : 1.0,
+      system: journeyMode ? JOURNEY_SYSTEM_PROMPT : SYSTEM_PROMPT,
       messages: [{ role: "user", content: userContent }],
     });
 
