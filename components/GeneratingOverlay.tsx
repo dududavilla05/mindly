@@ -47,7 +47,7 @@ export default function GeneratingOverlay({ phases = DEFAULT_PHASES }: Generatin
     const interval = setInterval(() => {
       setTextVisible(false);
       setTimeout(() => {
-        setPhaseIndex((i) => (i + 1) % PHASES.length);
+        setPhaseIndex((i) => (i + 1) % phases.length);
         setTextVisible(true);
       }, 350);
     }, 2200);
