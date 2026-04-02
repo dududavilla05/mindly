@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { LessonContent } from "@/types/lesson";
@@ -24,8 +25,11 @@ export default function MentorChat({ lesson, onClose }: MentorChatProps) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,18 +79,22 @@ export default function MentorChat({ lesson, onClose }: MentorChatProps) {
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        style={{ zIndex: 9998 }}
         onClick={onClose}
       />
 
       {/* Modal */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-3xl sm:rounded-3xl sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg animate-slide-up"
+        className="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-3xl sm:rounded-3xl sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg animate-slide-up"
         style={{
+          zIndex: 9999,
           background: "rgba(12,8,25,0.98)",
           border: "1px solid rgba(124,31,255,0.35)",
           boxShadow: "0 -8px 40px rgba(124,31,255,0.2)",
@@ -247,6 +255,7 @@ export default function MentorChat({ lesson, onClose }: MentorChatProps) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
