@@ -357,7 +357,7 @@ export default function HomeScreen({
         <div className="hidden md:flex flex-col items-center gap-3 animate-fade-in">
           <MindlyLogo size="lg" />
           <p className="text-[#a78bca] text-base font-medium tracking-wide text-center">
-            Aprenda qualquer coisa em minutos com IA
+            Transforme curiosidade em conhecimento em segundos
           </p>
         </div>
 
@@ -374,7 +374,7 @@ export default function HomeScreen({
           {/* Input de texto */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-[#c39dff] uppercase tracking-widest">
-              O que você quer aprender?
+              Qual é sua curiosidade hoje?
             </label>
             <div className="relative">
               <textarea
