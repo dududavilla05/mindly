@@ -227,40 +227,68 @@ export default function HomeScreen({
             </div>
           </div>
 
-          {/* Linha 2 — Mapa Mental (só para usuários logados) */}
+          {/* Linha 2 — Jornada + Mapa Mental (só para usuários logados) */}
           {user && (
-            <div className="flex justify-end px-4 pb-2">
+            <div className="flex justify-end gap-2 px-4 pb-2">
+              {/* Jornada */}
+              {profile?.plan === "max" ? (
+                <button
+                  onClick={onOpenJourney}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
+                  style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88"/>
+                  </svg>
+                  Jornada
+                </button>
+              ) : (
+                <div className="relative group">
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#4a3870] cursor-not-allowed"
+                    style={{ background: "rgba(124,31,255,0.06)", border: "1px solid rgba(124,31,255,0.15)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Jornada
+                  </button>
+                  <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
+                    Exclusivo plano Max
+                  </div>
+                </div>
+              )}
+
+              {/* Mapa Mental */}
               {profile?.plan === "max" ? (
                 <button
                   onClick={onOpenMindMap}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
                   style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="3" />
                     <circle cx="4" cy="6" r="2" /><line x1="6" y1="6" x2="9" y2="11" />
                     <circle cx="20" cy="6" r="2" /><line x1="18" y1="6" x2="15" y2="11" />
                     <circle cx="4" cy="18" r="2" /><line x1="6" y1="18" x2="9" y2="13" />
                     <circle cx="20" cy="18" r="2" /><line x1="18" y1="18" x2="15" y2="13" />
                   </svg>
-                  Mapa Mental
+                  Mapa
                 </button>
               ) : (
                 <div className="relative group">
                   <button
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#4a3870] cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#4a3870] cursor-not-allowed"
                     style={{ background: "rgba(124,31,255,0.06)", border: "1px solid rgba(124,31,255,0.15)" }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                     </svg>
-                    Mapa Mental
+                    Mapa
                   </button>
-                  <div
-                    className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}
-                  >
+                  <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
                     Exclusivo plano Max
                   </div>
                 </div>
@@ -290,6 +318,36 @@ export default function HomeScreen({
 
           {/* Direita: botões de ação */}
           <div className="ml-auto flex items-center gap-2">
+            {/* Jornada */}
+            {profile?.plan === "max" ? (
+              <button
+                onClick={onOpenJourney}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88"/>
+                </svg>
+                Jornada
+              </button>
+            ) : user ? (
+              <div className="relative group">
+                <button
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#4a3870] cursor-not-allowed"
+                  style={{ background: "rgba(124,31,255,0.06)", border: "1px solid rgba(124,31,255,0.12)" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Jornada
+                </button>
+                <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
+                  Exclusivo plano Max
+                </div>
+              </div>
+            ) : null}
+
             {/* Mapa Mental */}
             {profile?.plan === "max" ? (
               <button
@@ -536,47 +594,6 @@ export default function HomeScreen({
 
           {/* Overlay de geração */}
           {loading && <GeneratingOverlay />}
-        </div>
-
-        {/* Jornada de Aprendizado */}
-        <div className="w-full animate-fade-in">
-          {profile?.plan === "max" ? (
-            <button
-              onClick={onOpenJourney}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99]"
-              style={{
-                background: "rgba(124,31,255,0.08)",
-                border: "1px solid rgba(124,31,255,0.25)",
-              }}
-            >
-              <span className="text-2xl">🧭</span>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-white">Jornada de Aprendizado</p>
-                <p className="text-xs text-[#7a6a9a]">Plano de estudos progressivo com IA · até 30 dias</p>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bca" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          ) : (
-            <div
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl cursor-not-allowed"
-              style={{
-                background: "rgba(124,31,255,0.04)",
-                border: "1px solid rgba(124,31,255,0.12)",
-              }}
-            >
-              <span className="text-2xl opacity-40">🧭</span>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-[#4a3870]">Jornada de Aprendizado</p>
-                <p className="text-xs text-[#3a2a5a]">Exclusivo plano Max</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a2a5a" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </div>
-          )}
         </div>
 
         {/* Sugestões */}
