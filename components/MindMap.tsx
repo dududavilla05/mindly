@@ -236,6 +236,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
               edges={edges}
               onNodeClick={handleNodeClick}
               expandingId={expandingId}
+              topic={topic}
             />
           </div>
         )}

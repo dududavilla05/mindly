@@ -19,13 +19,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Disponível apenas no plano Max." }, { status: 403 });
     }
 
-    const { topic, nodeId, nodeLabel, nodeLevel } = await request.json();
+    const { topic, nodeId, nodeLabel, nodeLevel, explain } = await request.json();
     if (!topic?.trim()) return NextResponse.json({ error: "Tema obrigatório." }, { status: 400 });
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
 
     let prompt: string;
-    if (!nodeId) {
+    if (explain && nodeId) {
+      prompt = `No mapa mental sobre "${topic}", explique o conceito "${nodeLabel}" em 2 frases diretas, didáticas e objetivas em português. Retorne APENAS JSON: {"explanation":"..."}`;
+    } else if (!nodeId) {
       prompt = `Gere um mapa mental completo sobre: "${topic}"
 
 Retorne APENAS JSON puro (sem markdown):
