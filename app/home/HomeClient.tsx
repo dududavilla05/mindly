@@ -34,6 +34,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"licoes" | "mapas">("licoes");
+  const [mapKey, setMapKey] = useState(0);
 
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
   useEffect(() => { setSupabase(createClient()); }, []);
@@ -77,6 +78,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
   const handleOpenMindMap = (data?: { topic: string; nodes: MindMapNode[]; edges: MindMapEdge[] }) => {
     setMindMapData(data ?? null);
+    setMapKey(k => k + 1);
     setScreen("mindmap");
     setDrawerOpen(false);
     setSidebarTab("mapas");
@@ -132,6 +134,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
           </div>
         ) : screen === "mindmap" ? (
           <MindMap
+            key={mapKey}
             plan={profile?.plan}
             userId={user?.id}
             onBack={handleBack}
