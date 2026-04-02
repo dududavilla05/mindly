@@ -102,6 +102,40 @@ Regras absolutas:
 - Exemplos reais com nomes, números e contexto brasileiro quando relevante
 - O conteúdo total deve ser suficiente para 30-45 minutos de estudo real`;
 
+// Attempt to repair truncated JSON by closing open brackets/strings
+function repairJson(raw: string): unknown | null {
+  // First, try as-is
+  try { return JSON.parse(raw); } catch {}
+
+  let s = raw.trim();
+  // Strip trailing comma(s) before closing
+  s = s.replace(/,\s*$/, "");
+
+  // Walk the string tracking brackets and string state
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+
+  for (const ch of s) {
+    if (escape) { escape = false; continue; }
+    if (ch === "\\" && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") {
+      if (stack.length && stack[stack.length - 1] === ch) stack.pop();
+    }
+  }
+
+  // If we ended mid-string, close it
+  if (inString) s += '"';
+  // Close any remaining open brackets
+  s += stack.reverse().join("");
+
+  try { return JSON.parse(s); } catch { return null; }
+}
+
 const FREE_PLAN_LIMIT = 10;
 
 export async function POST(request: NextRequest) {
@@ -226,7 +260,7 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: isJourney ? 4000 : 1500,
+      max_tokens: isJourney ? 8000 : 1500,
       temperature: isJourney ? 0.8 : 1.0,
       system: isJourney ? JOURNEY_SYSTEM_PROMPT : SYSTEM_PROMPT,
       messages: [{ role: "user", content: userContent }],
@@ -238,24 +272,28 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
       throw new Error("Resposta inválida da IA");
     }
 
-    console.log(`[generate-lesson] raw response (first 300 chars): ${textContent.text.trim().substring(0, 300)}`);
+    const rawText = textContent.text.trim();
+    console.log(`[generate-lesson] stop_reason=${response.stop_reason} chars=${rawText.length} first300=${rawText.substring(0, 300)}`);
 
     let lessonData;
-    try {
-      // Strip markdown code fences if the model wrapped the JSON (e.g. ```json ... ```)
-      let jsonText = textContent.text.trim();
-      jsonText = jsonText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("[generate-lesson] JSON not found in response. Full text:", textContent.text.trim().substring(0, 800));
-        throw new Error("JSON não encontrado na resposta");
-      }
-      lessonData = JSON.parse(jsonMatch[0]);
-      console.log("[generate-lesson] parsed OK, title:", lessonData?.title);
-    } catch (parseErr) {
-      console.error("[generate-lesson] JSON parse error:", parseErr, "| raw (800):", textContent.text.trim().substring(0, 800));
-      throw new Error(`Erro ao processar resposta da IA: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
+    // Strip markdown code fences if present (e.g. ```json ... ```)
+    let jsonText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      console.error("[generate-lesson] JSON block not found. raw(800):", rawText.substring(0, 800));
+      throw new Error("JSON não encontrado na resposta da IA");
     }
+
+    const candidate = jsonMatch[0];
+    lessonData = repairJson(candidate);
+
+    if (!lessonData) {
+      console.error("[generate-lesson] JSON repair failed. candidate(800):", candidate.substring(0, 800));
+      throw new Error("Não foi possível processar a resposta da IA. Tente novamente.");
+    }
+
+    console.log("[generate-lesson] parsed OK, title:", (lessonData as Record<string, unknown>)?.title);
 
     // Salvar histórico
     if (user) {
