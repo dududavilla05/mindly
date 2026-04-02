@@ -92,13 +92,16 @@ export default function MentorChat({ lesson, onClose }: MentorChatProps) {
 
       {/* Modal */}
       <div
-        className="fixed bottom-0 left-0 right-0 flex flex-col rounded-t-3xl sm:rounded-3xl sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg animate-slide-up"
+        className="fixed flex flex-col rounded-3xl w-[calc(100%-2rem)] max-w-lg animate-slide-up"
         style={{
           zIndex: 9999,
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
           background: "rgba(12,8,25,0.98)",
           border: "1px solid rgba(124,31,255,0.35)",
-          boxShadow: "0 -8px 40px rgba(124,31,255,0.2)",
-          maxHeight: "80vh",
+          boxShadow: "0 8px 60px rgba(124,31,255,0.3)",
+          maxHeight: "85vh",
         }}
       >
         {/* Header */}
