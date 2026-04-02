@@ -40,8 +40,9 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [mapKey, setMapKey] = useState(0);
   const [journeyKey, setJourneyKey] = useState(0);
   const [currentJourney, setCurrentJourney] = useState<JourneyItem | null>(null);
+  const [currentJourneyId, setCurrentJourneyId] = useState<string | null>(null);
   const [returnScreen, setReturnScreen] = useState<AppScreen>("home");
-  const [journeyContext, setJourneyContext] = useState<{ day: number; journeyTitle: string } | null>(null);
+  const [journeyContext, setJourneyContext] = useState<{ day: number; journeyTitle: string; totalDays: number } | null>(null);
   const [lessonFromJourney, setLessonFromJourney] = useState(false);
 
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
@@ -80,10 +81,10 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     refreshProfile();
   };
 
-  const handleLessonFromJourney = (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string) => {
+  const handleLessonFromJourney = (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string, journeyTotalDays?: number) => {
     setReturnScreen("journey");
     setLessonFromJourney(true);
-    setJourneyContext(journeyDay != null && journeyTitle ? { day: journeyDay, journeyTitle } : null);
+    setJourneyContext(journeyDay != null && journeyTitle ? { day: journeyDay, journeyTitle, totalDays: journeyTotalDays ?? 0 } : null);
     setCurrentLesson(lesson);
     setCurrentSubject(subject);
     setScreen("lesson");
@@ -115,12 +116,16 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const handleBack = () => {
     const target = returnScreen;
     setReturnScreen("home");
+    if (target === "journey") {
+      setJourneyKey(k => k + 1); // force remount so Journey reloads fresh data from Supabase
+    }
     setScreen(target);
     setSidebarTab(target === "journey" ? "jornadas" : "licoes");
   };
 
   const handleOpenJourney = (data?: JourneyItem) => {
     setCurrentJourney(data ?? null);
+    setCurrentJourneyId(data?.id ?? null);
     setJourneyKey(k => k + 1);
     setScreen("journey");
     setDrawerOpen(false);
@@ -193,6 +198,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             supabase={supabase}
             onBack={handleBack}
             initialJourney={currentJourney}
+            journeyId={currentJourneyId ?? undefined}
             onLessonGenerated={handleLessonFromJourney}
             onSaved={refreshJourneys}
           />

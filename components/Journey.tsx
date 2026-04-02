@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { LessonContent } from "@/types/lesson";
 import type { SupabaseClientType } from "@/lib/supabase/client";
 import type { JourneyLesson, JourneyItem } from "@/hooks/useJourneys";
@@ -23,7 +23,8 @@ interface JourneyProps {
   supabase?: SupabaseClientType | null;
   onBack: () => void;
   initialJourney?: JourneyItem | null;
-  onLessonGenerated: (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string) => void;
+  journeyId?: string;
+  onLessonGenerated: (lesson: LessonContent, subject: string, journeyDay?: number, journeyTitle?: string, journeyTotalDays?: number) => void;
   onSaved?: () => void;
 }
 
@@ -51,7 +52,7 @@ function calcStreak(completedList: number[], totalDays: number): number {
 }
 
 export default function Journey({
-  plan, userId, supabase, onBack, initialJourney, onLessonGenerated, onSaved,
+  plan, userId, supabase, onBack, initialJourney, journeyId, onLessonGenerated, onSaved,
 }: JourneyProps) {
   const isMax = plan === "max";
 
@@ -74,6 +75,31 @@ export default function Journey({
   const [saveWarning, setSaveWarning] = useState("");
   const [loadingLessonDay, setLoadingLessonDay] = useState<number | null>(null);
   const [celebratingDay, setCelebratingDay] = useState<number | null>(null);
+
+  // Reload fresh data from Supabase when returning to an existing journey
+  useEffect(() => {
+    if (!journeyId || !supabase) return;
+    supabase
+      .from("journeys")
+      .select("id, title, objective, duration_days, lessons, completed_days, streak, completed_day_list")
+      .eq("id", journeyId)
+      .single()
+      .then(({ data, error }) => {
+        if (data && !error) {
+          setJourney({
+            id: data.id,
+            title: data.title,
+            objective: data.objective,
+            duration_days: data.duration_days,
+            lessons: data.lessons,
+            completed_day_list: data.completed_day_list ?? [],
+            completed_days: data.completed_days ?? 0,
+            streak: data.streak ?? 0,
+          });
+          setPhase("plan");
+        }
+      });
+  }, [journeyId, supabase]);
 
   const progress = journey
     ? Math.round((journey.completed_days / journey.duration_days) * 100)
@@ -184,7 +210,7 @@ export default function Journey({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar lição");
-      onLessonGenerated(data.lesson as LessonContent, lesson.title, lesson.day, journey?.title);
+      onLessonGenerated(data.lesson as LessonContent, lesson.title, lesson.day, journey?.title, journey?.duration_days);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao gerar lição");
     } finally {

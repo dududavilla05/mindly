@@ -13,7 +13,7 @@ interface LessonScreenProps {
   onNewLesson: () => void;
   onOpenHistory?: () => void;
   plan?: string | null;
-  journeyContext?: { day: number; journeyTitle: string } | null;
+  journeyContext?: { day: number; journeyTitle: string; totalDays: number } | null;
 }
 
 async function exportToPDF(lesson: LessonContent, subject: string) {
@@ -228,17 +228,27 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
       {/* Journey context banner */}
       {journeyContext && (
         <div
-          className="relative z-10 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold"
+          className="relative z-10 flex items-center justify-center gap-3 px-4 py-3"
           style={{
-            background: "linear-gradient(90deg, rgba(124,31,255,0.25) 0%, rgba(166,106,255,0.2) 50%, rgba(124,31,255,0.25) 100%)",
-            borderBottom: "1px solid rgba(124,31,255,0.35)",
+            background: "linear-gradient(90deg, rgba(124,31,255,0.3) 0%, rgba(166,106,255,0.22) 50%, rgba(124,31,255,0.3) 100%)",
+            borderBottom: "1px solid rgba(124,31,255,0.4)",
+            boxShadow: "0 2px 16px rgba(124,31,255,0.2)",
           }}
         >
-          <span style={{ color: "#c39dff" }}>📍</span>
-          <span style={{ color: "#c39dff" }}>
-            Dia {journeyContext.day} da Jornada:&nbsp;
-            <span className="text-white font-bold">{journeyContext.journeyTitle}</span>
-          </span>
+          {/* Compass icon */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="2" className="shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+          </svg>
+          <div className="flex items-center gap-2 text-sm flex-wrap justify-center">
+            <span style={{ color: "#c39dff" }}>
+              Jornada: <span className="font-bold text-white">{journeyContext.journeyTitle}</span>
+            </span>
+            <span style={{ color: "rgba(124,31,255,0.6)" }}>·</span>
+            <span className="font-semibold" style={{ color: "#a78bca" }}>
+              Dia {journeyContext.day}{journeyContext.totalDays > 0 ? ` de ${journeyContext.totalDays}` : ""}
+            </span>
+          </div>
         </div>
       )}
 
