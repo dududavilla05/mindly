@@ -160,21 +160,19 @@ export default function HistoryDrawer({
                 {history.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center rounded-xl transition-all duration-150"
+                    className="relative rounded-xl transition-all duration-150 cursor-pointer active:scale-[0.98]"
                     style={{ background: "rgba(124,31,255,0.05)" }}
+                    onClick={() => handleSelectLesson(item)}
+                    onTouchStart={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
+                    onTouchEnd={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
                   >
-                    <div
-                      className="flex-1 p-3 cursor-pointer min-w-0 active:scale-[0.98]"
-                      onClick={() => handleSelectLesson(item)}
-                      onTouchStart={(e) => ((e.currentTarget.closest("div") as HTMLDivElement).style.background = "rgba(124,31,255,0.13)")}
-                      onTouchEnd={(e) => ((e.currentTarget.closest("div") as HTMLDivElement).style.background = "rgba(124,31,255,0.05)")}
-                    >
+                    <div className="p-3 pr-8">
                       <p className="text-sm text-white/70 line-clamp-2 leading-snug">{item.subject}</p>
                       <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta lição?")) onDeleteLesson?.(item.id); }}
-                      className="shrink-0 p-2 mr-1 text-white/20 hover:text-red-400 active:text-red-400 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); onDeleteLesson?.(item.id); }}
+                      className="absolute top-2 right-2 p-1 text-white/25 hover:text-red-400 active:text-red-400 transition-colors rounded"
                       title="Excluir"
                     >
                       <TrashIcon />

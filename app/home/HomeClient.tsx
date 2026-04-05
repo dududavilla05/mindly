@@ -151,7 +151,11 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
   const handleDeleteLesson = async (id: string) => {
     if (!supabase) return;
-    await supabase.from("lesson_history").delete().eq("id", id);
+    const { error } = await supabase.from("lesson_history").delete().eq("id", id);
+    if (error) {
+      console.error("[handleDeleteLesson] Erro ao excluir lição:", error);
+      return;
+    }
     refreshHistory();
   };
 

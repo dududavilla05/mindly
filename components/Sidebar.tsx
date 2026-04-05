@@ -137,18 +137,19 @@ export default function Sidebar({
               {history.map((item) => (
                 <div
                   key={item.id}
-                  className="group flex items-center rounded-xl transition-all duration-150"
+                  className="group relative rounded-xl transition-all duration-150 cursor-pointer"
                   style={{ background: "rgba(124,31,255,0.05)" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
+                  onClick={() => onSelectLesson(item)}
                 >
-                  <div className="flex-1 p-3 cursor-pointer min-w-0" onClick={() => onSelectLesson(item)}>
+                  <div className="p-3 pr-8">
                     <p className="text-sm text-white/70 group-hover:text-white line-clamp-2 leading-snug">{item.subject}</p>
                     <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta lição?")) onDeleteLesson?.(item.id); }}
-                    className="shrink-0 p-2 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
+                    onClick={(e) => { e.stopPropagation(); onDeleteLesson?.(item.id); }}
+                    className="absolute top-2 right-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400 rounded"
                     title="Excluir"
                   >
                     <TrashIcon />
