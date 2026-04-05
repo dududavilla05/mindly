@@ -79,7 +79,7 @@ const PLANS: Plan[] = [
       { text: "Modo Mentor (chat com IA)" },
       { text: "Mapa Mental ilimitado" },
       { text: "Relatório semanal de evolução", soon: true },
-      { text: "Trilhas personalizadas", soon: true },
+      { text: "Jornada de Aprendizado" },
       { text: "Modo Desafio", soon: true },
       { text: "Badge exclusivo no ranking", soon: true },
       { text: "Acesso antecipado a novidades" },
@@ -232,25 +232,25 @@ function PlanosContent() {
                       }
                 }
               >
-                {/* Badge */}
-                {plan.badge && (
-                  <div
-                    className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
-                    style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
-                  >
-                    {plan.badge}
-                  </div>
-                )}
-                {/* Trial badge */}
-                {plan.trialBadge && !plan.badge && (
-                  <div
-                    className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold whitespace-nowrap"
-                    style={{
-                      background: "linear-gradient(135deg, #059669, #10b981)",
-                      color: "white",
-                    }}
-                  >
-                    {plan.trialBadge}
+                {/* Badges */}
+                {(plan.badge || plan.trialBadge) && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap">
+                    {plan.badge && (
+                      <div
+                        className="px-4 py-1 rounded-full text-xs font-bold text-white"
+                        style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
+                      >
+                        {plan.badge}
+                      </div>
+                    )}
+                    {plan.trialBadge && (
+                      <div
+                        className="px-3 py-1 rounded-full text-xs font-bold text-white"
+                        style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}
+                      >
+                        {plan.trialBadge}
+                      </div>
+                    )}
                   </div>
                 )}
 
