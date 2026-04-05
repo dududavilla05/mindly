@@ -48,7 +48,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
   useEffect(() => { setSupabase(createClient()); }, []);
 
-  const { history, loading: historyLoading, refresh: refreshHistory } = useHistory(supabase, user?.id, profile?.plan);
+  const { history, loading: historyLoading, refresh: refreshHistory, remove: removeLesson } = useHistory(supabase, user?.id, profile?.plan);
   const { mindMaps, loading: mindMapsLoading, refresh: refreshMindMaps } = useMindMaps(supabase, user?.id, profile?.plan);
   const { journeys, loading: journeysLoading, refresh: refreshJourneys } = useJourneys(supabase, user?.id, profile?.plan);
 
@@ -151,12 +151,17 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
   const handleDeleteLesson = async (id: string) => {
     if (!supabase) return;
-    const { error } = await supabase.from("lesson_history").delete().eq("id", id);
+    // Optimistic: remove from UI immediately
+    removeLesson(id);
+    console.log("[handleDeleteLesson] Tentando excluir id:", id);
+    const { error, data } = await supabase.from("lesson_history").delete().eq("id", id).select();
     if (error) {
       console.error("[handleDeleteLesson] Erro ao excluir lição:", error);
-      return;
+      // Rollback: restore list from DB
+      refreshHistory();
+    } else {
+      console.log("[handleDeleteLesson] Excluído com sucesso:", data);
     }
-    refreshHistory();
   };
 
   const handleDeleteMindMap = async (id: string) => {

@@ -48,9 +48,13 @@ export function useHistory(
     });
   }, [supabase, userId, plan]);
 
+  const remove = useCallback((id: string) => {
+    setHistory(prev => prev.filter(item => item.id !== id));
+  }, []);
+
   useEffect(() => {
     fetch();
   }, [fetch]);
 
-  return { history, loading, refresh: fetch };
+  return { history, loading, refresh: fetch, remove };
 }
