@@ -22,6 +22,7 @@ interface Plan {
   cta: string;
   highlight: boolean;
   badge?: string;
+  trialBadge?: string;
 }
 
 const PLANS: Plan[] = [
@@ -60,9 +61,10 @@ const PLANS: Plan[] = [
 { text: "Certificados de conclusão", soon: true },
       { text: "Lembretes de estudo", soon: true },
     ],
-    cta: "Assinar Pro",
+    cta: "Iniciar 7 dias grátis",
     highlight: true,
     badge: "Mais popular",
+    trialBadge: "7 dias grátis",
   },
   {
     id: "max",
@@ -76,15 +78,15 @@ const PLANS: Plan[] = [
       { text: "Tudo do Pro" },
       { text: "Modo Mentor (chat com IA)" },
       { text: "Mapa Mental ilimitado" },
-      { text: "Quiz estilo ENEM", soon: true },
       { text: "Relatório semanal de evolução", soon: true },
       { text: "Trilhas personalizadas", soon: true },
       { text: "Modo Desafio", soon: true },
       { text: "Badge exclusivo no ranking", soon: true },
       { text: "Acesso antecipado a novidades" },
     ],
-    cta: "Assinar Max",
+    cta: "Iniciar 7 dias grátis",
     highlight: false,
+    trialBadge: "7 dias grátis",
   },
 ];
 
@@ -239,6 +241,18 @@ function PlanosContent() {
                     {plan.badge}
                   </div>
                 )}
+                {/* Trial badge */}
+                {plan.trialBadge && !plan.badge && (
+                  <div
+                    className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                    style={{
+                      background: "linear-gradient(135deg, #059669, #10b981)",
+                      color: "white",
+                    }}
+                  >
+                    {plan.trialBadge}
+                  </div>
+                )}
 
                 {/* Plan header */}
                 <div className="flex flex-col gap-1">
@@ -272,6 +286,14 @@ function PlanosContent() {
                     {!isFree && <span className="text-[#7a6a9a] text-sm mb-1.5">/mês</span>}
                     {isFree && <span className="text-[#7a6a9a] text-sm mb-1.5">para sempre</span>}
                   </div>
+                  {!isFree && plan.trialBadge && (
+                    <span
+                      className="self-start px-2 py-0.5 rounded-md text-[11px] font-bold"
+                      style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.35)", color: "#34d399" }}
+                    >
+                      ✨ {plan.trialBadge}
+                    </span>
+                  )}
                   {!isFree && plan.annualBilling && (
                     <p className="text-xs text-[#7a6a9a]">cobrado {plan.annualBilling}</p>
                   )}
@@ -363,7 +385,7 @@ function PlanosContent() {
                 )}
                 {plan.priceId && (
                   <p className="text-center text-[11px] text-[#5c3d8a]">
-                    Cancele quando quiser, sem multa
+                    7 dias grátis · Cancele quando quiser, sem multa
                   </p>
                 )}
               </div>

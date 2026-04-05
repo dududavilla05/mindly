@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
       cancel_url: `${origin}/planos?cancelado=true`,
       locale: "pt-BR",
       payment_method_types: ["card"],
+      subscription_data: {
+        trial_period_days: 7,
+      },
       ...(userId && {
         client_reference_id: userId,
         metadata: { userId },

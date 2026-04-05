@@ -14,9 +14,26 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     const { data: profile } = await adminSupabase
-      .from("profiles").select("plan").eq("id", user.id).single();
-    if (profile?.plan !== "max") {
-      return NextResponse.json({ error: "Disponível apenas no plano Max." }, { status: 403 });
+      .from("profiles").select("plan, maps_today, last_map_date").eq("id", user.id).single();
+
+    const plan = profile?.plan ?? "gratis";
+    const LIMITS: Record<string, number> = { gratis: 3, pro: 10 };
+    const today = new Date().toISOString().slice(0, 10);
+    const lastDate = profile?.last_map_date ?? null;
+    const mapsToday = lastDate === today ? (profile?.maps_today ?? 0) : 0;
+
+    if (plan !== "max") {
+      const limit = LIMITS[plan] ?? 3;
+      if (mapsToday >= limit) {
+        return NextResponse.json(
+          { error: `Limite de ${limit} mapas por dia atingido. Faça upgrade para continuar.` },
+          { status: 403 }
+        );
+      }
+      await adminSupabase.from("profiles").update({
+        maps_today: mapsToday + 1,
+        last_map_date: today,
+      }).eq("id", user.id);
     }
 
     const { topic, nodeId, nodeLabel, nodeLevel, explain } = await request.json();
