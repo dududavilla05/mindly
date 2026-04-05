@@ -101,6 +101,9 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const handleSelectHistoryLesson = (item: { subject: string; lesson_data: LessonContent }) => {
     setCurrentLesson(item.lesson_data);
     setCurrentSubject(item.subject);
+    setReturnScreen("home");
+    setJourneyContext(null);
+    setLessonFromJourney(false);
     setScreen("lesson");
     setDrawerOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });

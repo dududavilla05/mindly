@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import MindMapViewer from "./MindMapViewer";
 import GeneratingOverlay from "./GeneratingOverlay";
@@ -42,6 +42,8 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   const [savedMsg, setSavedMsg] = useState("");
   const [saveIsError, setSaveIsError] = useState(false);
   const [error, setError] = useState("");
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const generate = useCallback(async () => {
     if (!topic.trim() || loading) return;
@@ -127,6 +129,64 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     }
   }, [userId, nodes, edges, topic, onSaved]);
 
+  const handleExportPdf = useCallback(async () => {
+    if (!mapContainerRef.current || nodes.length === 0) return;
+    setExportingPdf(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const canvas = await html2canvas(mapContainerRef.current, {
+        backgroundColor: "#0f0a1e",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdfW = 297;
+      const pdfH = 210;
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+      // Título
+      doc.setFillColor(15, 10, 30);
+      doc.rect(0, 0, pdfW, pdfH, "F");
+      doc.setTextColor(195, 157, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(topic.trim() || "Mapa Mental", pdfW / 2, 12, { align: "center" });
+      doc.setTextColor(90, 60, 138);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text("Gerado pelo Mindly · Powered by Claude AI", pdfW / 2, 19, { align: "center" });
+
+      // Imagem do mapa
+      const margin = 8;
+      const imgAreaY = 24;
+      const imgAreaH = pdfH - imgAreaY - margin;
+      const imgAreaW = pdfW - margin * 2;
+      const imgRatio = canvas.width / canvas.height;
+      const areaRatio = imgAreaW / imgAreaH;
+      let drawW = imgAreaW;
+      let drawH = imgAreaH;
+      if (imgRatio > areaRatio) {
+        drawH = imgAreaW / imgRatio;
+      } else {
+        drawW = imgAreaH * imgRatio;
+      }
+      const drawX = margin + (imgAreaW - drawW) / 2;
+      const drawY = imgAreaY + (imgAreaH - drawH) / 2;
+      doc.addImage(imgData, "PNG", drawX, drawY, drawW, drawH);
+
+      const slug = (topic.trim() || "mapa-mental").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 40);
+      doc.save(`mindly-mapa-${slug}.pdf`);
+    } catch (e) {
+      console.error("[MindMap PDF]", e);
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [nodes, topic]);
+
   if (mapsLimitReached) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6" style={{ background: "#0f0a1e" }}>
@@ -194,18 +254,29 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
         </div>
 
         {nodes.length > 0 && (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50 shrink-0"
-            style={{
-              background: saveIsError ? "rgba(239,68,68,0.12)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.12)" : "rgba(124,31,255,0.15)",
-              border: `1px solid ${saveIsError ? "rgba(239,68,68,0.35)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.35)" : "rgba(124,31,255,0.3)"}`,
-              color: saveIsError ? "#fca5a5" : savedMsg && !saveIsError ? "#86efac" : "#c39dff",
-            }}
-          >
-            {saving ? "Salvando…" : saveIsError ? "❌ " + savedMsg : savedMsg ? "✓ " + savedMsg : "💾 Salvar"}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+              style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#34d399" }}
+              title="Exportar PDF"
+            >
+              {exportingPdf ? "Gerando…" : "📄 PDF"}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+              style={{
+                background: saveIsError ? "rgba(239,68,68,0.12)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.12)" : "rgba(124,31,255,0.15)",
+                border: `1px solid ${saveIsError ? "rgba(239,68,68,0.35)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.35)" : "rgba(124,31,255,0.3)"}`,
+                color: saveIsError ? "#fca5a5" : savedMsg && !saveIsError ? "#86efac" : "#c39dff",
+              }}
+            >
+              {saving ? "Salvando…" : saveIsError ? "❌ " + savedMsg : savedMsg ? "✓ " + savedMsg : "💾 Salvar"}
+            </button>
+          </div>
         )}
       </header>
 
@@ -239,7 +310,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
         )}
 
         {nodes.length > 0 && !loading && (
-          <div className="animate-fade-in w-full h-full">
+          <div ref={mapContainerRef} className="animate-fade-in w-full h-full">
             <MindMapViewer
               nodes={nodes}
               edges={edges}
