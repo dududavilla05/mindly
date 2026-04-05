@@ -61,10 +61,10 @@ const PLANS: Plan[] = [
 { text: "Certificados de conclusão", soon: true },
       { text: "Lembretes de estudo", soon: true },
     ],
-    cta: "Iniciar 7 dias grátis",
+    cta: "Iniciar 3 dias grátis",
     highlight: true,
     badge: "Mais popular",
-    trialBadge: "7 dias grátis",
+    trialBadge: "3 dias grátis",
   },
   {
     id: "max",
@@ -84,9 +84,9 @@ const PLANS: Plan[] = [
       { text: "Badge exclusivo no ranking", soon: true },
       { text: "Acesso antecipado a novidades" },
     ],
-    cta: "Iniciar 7 dias grátis",
+    cta: "Iniciar 3 dias grátis",
     highlight: false,
-    trialBadge: "7 dias grátis",
+    trialBadge: "3 dias grátis",
   },
 ];
 
@@ -385,7 +385,7 @@ function PlanosContent() {
                 )}
                 {plan.priceId && (
                   <p className="text-center text-[11px] text-[#5c3d8a]">
-                    7 dias grátis · Cancele quando quiser, sem multa
+                    3 dias grátis · Cancele quando quiser, sem multa
                   </p>
                 )}
               </div>

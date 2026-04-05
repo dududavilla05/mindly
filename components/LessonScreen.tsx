@@ -145,7 +145,7 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
 export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onOpenHistory, plan, journeyContext }: LessonScreenProps) {
   const [exporting, setExporting] = useState(false);
   const [mentorOpen, setMentorOpen] = useState(false);
-  const canExport = plan === "pro" || plan === "max";
+  const canExport = true;
   const canMentor = plan === "max";
 
   const handleExport = async () => {
@@ -569,17 +569,10 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
                   <line x1="12" y1="18" x2="12" y2="12"/>
                   <line x1="9" y1="15" x2="15" y2="15"/>
                 </svg>
-                {canExport ? "Exportar PDF" : "Exportar PDF — Disponível no plano Pro"}
+                Exportar PDF
               </>
             )}
           </button>
-          {!canExport && (
-            <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-              style={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(124,31,255,0.4)" }}
-            >
-              Disponível no plano Pro
-            </div>
-          )}
         </div>
 
         {/* Modo Mentor */}
