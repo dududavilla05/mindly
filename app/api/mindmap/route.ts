@@ -13,6 +13,12 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+    // Lê o body ANTES de qualquer verificação de limite
+    const { topic, nodeId, nodeLabel, nodeLevel, explain } = await request.json();
+    if (!topic?.trim()) return NextResponse.json({ error: "Tema obrigatório." }, { status: 400 });
+
+    const isNewMap = !nodeId && !explain;
+
     const { data: profile } = await adminSupabase
       .from("profiles").select("plan, maps_today, last_map_date").eq("id", user.id).single();
 
@@ -22,7 +28,8 @@ export async function POST(request: NextRequest) {
     const lastDate = profile?.last_map_date ?? null;
     const mapsToday = lastDate === today ? (profile?.maps_today ?? 0) : 0;
 
-    if (plan !== "max") {
+    // Só verifica e incrementa limite para geração de novo mapa (não para expansão ou explicação)
+    if (isNewMap && plan !== "max") {
       const limit = LIMITS[plan] ?? 3;
       if (mapsToday >= limit) {
         return NextResponse.json(
@@ -35,9 +42,6 @@ export async function POST(request: NextRequest) {
         last_map_date: today,
       }).eq("id", user.id);
     }
-
-    const { topic, nodeId, nodeLabel, nodeLevel, explain } = await request.json();
-    if (!topic?.trim()) return NextResponse.json({ error: "Tema obrigatório." }, { status: 400 });
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
 
