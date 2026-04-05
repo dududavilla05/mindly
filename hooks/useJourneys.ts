@@ -8,6 +8,7 @@ export interface JourneyLesson {
   estimated_minutes?: number;
   topics?: string[];
   difficulty?: "Iniciante" | "Intermediário" | "Avançado";
+  generated_content?: import("@/types/lesson").LessonContent;
 }
 
 export interface JourneyItem {

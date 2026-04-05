@@ -205,6 +205,12 @@ export default function Journey({
     setLoadingLessonDay(lesson.day);
     setError("");
     try {
+      // Return cached content immediately if already generated
+      if (lesson.generated_content) {
+        onLessonGenerated(lesson.generated_content, lesson.title, lesson.day, journey?.title, journey?.duration_days);
+        return;
+      }
+
       const res = await fetch("/api/generate-lesson", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -221,13 +227,32 @@ export default function Journey({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar lição");
-      onLessonGenerated(data.lesson as LessonContent, lesson.title, lesson.day, journey?.title, journey?.duration_days);
+
+      const generatedLesson = data.lesson as LessonContent;
+
+      // Cache the generated content in Supabase
+      if (supabase && journey?.id) {
+        const updatedLessons = journey.lessons.map(l =>
+          l.day === lesson.day ? { ...l, generated_content: generatedLesson } : l
+        );
+        const { error: cacheErr } = await supabase
+          .from("journeys")
+          .update({ lessons: updatedLessons })
+          .eq("id", journey.id);
+        if (cacheErr) {
+          console.error("[Journey] Erro ao cachear lição:", cacheErr);
+        } else {
+          setJourney(prev => prev ? { ...prev, lessons: updatedLessons } : prev);
+        }
+      }
+
+      onLessonGenerated(generatedLesson, lesson.title, lesson.day, journey?.title, journey?.duration_days);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao gerar lição");
     } finally {
       setLoadingLessonDay(null);
     }
-  }, [loadingLessonDay, journey, onLessonGenerated]);
+  }, [loadingLessonDay, journey, supabase, onLessonGenerated]);
 
   const handleNewJourney = () => {
     setPhase("form");
