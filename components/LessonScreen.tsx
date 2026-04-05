@@ -23,8 +23,11 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
   const PAD = 40;
 
   const el = document.createElement("div");
+  // position:fixed keeps the element out of document layout, so scrollWidth
+  // stays normal and html2canvas doesn't allocate a ~20 000px-wide canvas
+  // (which is what caused the browser to freeze / screen to go dark).
   el.style.cssText = `
-    position:absolute; left:-9999px; top:0;
+    position:fixed; left:-9999px; top:0;
     width:794px; background:#ffffff;
     font-family:Arial,Helvetica,sans-serif; color:#1e1432;
   `;
