@@ -25,9 +25,13 @@ interface MindMapProps {
   initialNodes?: MindMapNode[];
   initialEdges?: MindMapEdge[];
   onSaved?: () => void;
+  mapsLimitReached?: boolean;
+  mapsLimit?: number | null;
+  mapsToday?: number;
+  onMapGenerated?: () => void;
 }
 
-export default function MindMap({ plan, userId, onBack, initialTopic = "", initialNodes, initialEdges, onSaved }: MindMapProps) {
+export default function MindMap({ plan, userId, onBack, initialTopic = "", initialNodes, initialEdges, onSaved, mapsLimitReached = false, mapsLimit, mapsToday = 0, onMapGenerated }: MindMapProps) {
   const isMax = plan === "max";
   const [topic, setTopic] = useState(initialTopic);
   const [nodes, setNodes] = useState<MindMapNode[]>(initialNodes ?? []);
@@ -55,12 +59,13 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar");
       setNodes(data.nodes ?? []);
       setEdges(data.edges ?? []);
+      onMapGenerated?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao gerar mapa");
     } finally {
       setLoading(false);
     }
-  }, [topic, loading]);
+  }, [topic, loading, onMapGenerated]);
 
   const handleNodeClick = useCallback(async (node: MindMapNode) => {
     if (expandingId) return;
@@ -122,22 +127,26 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     }
   }, [userId, nodes, edges, topic, onSaved]);
 
-  if (!isMax) {
+  if (mapsLimitReached) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-6" style={{ background: "#0f0a1e" }}>
-        <span className="text-5xl">🗺️</span>
-        <h2 className="text-2xl font-bold text-white text-center">Mapa Mental com IA</h2>
+        <span className="text-5xl">🔒</span>
+        <h2 className="text-2xl font-bold text-white text-center">Limite diário atingido</h2>
         <p className="text-[#a78bca] text-center max-w-sm">
-          O Mapa Mental é exclusivo para usuários do plano <strong className="text-white">Max</strong>.
-          Visualize e expanda conhecimento de forma interativa.
+          {mapsLimit != null
+            ? `Você usou ${mapsToday} de ${mapsLimit} mapas mentais hoje.`
+            : "Limite diário de mapas atingido."}{" "}
+          {!isMax && "Faça upgrade para criar mais mapas ou volte amanhã."}
         </p>
-        <a
-          href="/planos"
-          className="px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
-          style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
-        >
-          Ver planos
-        </a>
+        {!isMax && (
+          <a
+            href="/planos"
+            className="px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
+          >
+            Ver planos
+          </a>
+        )}
         <button onClick={onBack} className="text-sm text-[#7a6a9a] hover:text-white transition-colors">
           ← Voltar
         </button>

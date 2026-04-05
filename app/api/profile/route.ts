@@ -18,7 +18,7 @@ export async function GET() {
 
     const { data: profile, error } = await adminSupabase
       .from("profiles")
-      .select("plan, lessons_today, last_lesson_date, streak_days")
+      .select("plan, lessons_today, last_lesson_date, streak_days, maps_today, last_map_date")
       .eq("id", user.id)
       .single();
 

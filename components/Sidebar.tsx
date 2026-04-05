@@ -31,6 +31,9 @@ interface SidebarProps {
   plan?: string | null;
   activeTab?: "licoes" | "mapas" | "jornadas";
   onTabChange?: (tab: "licoes" | "mapas" | "jornadas") => void;
+  mapsLimitReached?: boolean;
+  mapsLimit?: number | null;
+  mapsToday?: number;
 }
 
 export default function Sidebar({
@@ -48,6 +51,9 @@ export default function Sidebar({
   plan,
   activeTab = "licoes",
   onTabChange,
+  mapsLimitReached = false,
+  mapsLimit,
+  mapsToday = 0,
 }: SidebarProps) {
   const isMax = plan === "max";
 
@@ -132,10 +138,13 @@ export default function Sidebar({
             </div>
           )
         ) : activeTab === "mapas" ? (
-          !isMax ? (
+          mapsLimitReached ? (
             <div className="flex flex-col items-center gap-3 mt-10 px-2 text-center">
               <span className="text-2xl">🔒</span>
-              <p className="text-xs text-[#7a6a9a] leading-relaxed">Mapas Mentais disponíveis no plano Max</p>
+              <p className="text-xs text-white/60 font-semibold leading-relaxed">Limite diário atingido</p>
+              <p className="text-xs text-[#7a6a9a] leading-relaxed">
+                {mapsLimit != null ? `${mapsToday}/${mapsLimit} mapas usados hoje.` : ""} Volte amanhã ou faça upgrade.
+              </p>
               <a href="/planos" className="text-xs text-[#a78bfa] underline">Ver planos</a>
             </div>
           ) : (

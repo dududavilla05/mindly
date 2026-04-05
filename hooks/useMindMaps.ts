@@ -19,7 +19,7 @@ export function useMindMaps(
   const [loading, setLoading] = useState(false);
 
   const fetch = useCallback(() => {
-    if (!supabase || !userId || plan !== "max") return;
+    if (!supabase || !userId) return;
     setLoading(true);
     supabase
       .from("mind_maps")

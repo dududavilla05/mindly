@@ -52,6 +52,12 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const { mindMaps, loading: mindMapsLoading, refresh: refreshMindMaps } = useMindMaps(supabase, user?.id, profile?.plan);
   const { journeys, loading: journeysLoading, refresh: refreshJourneys } = useJourneys(supabase, user?.id, profile?.plan);
 
+  const MAP_LIMITS: Record<string, number> = { gratis: 3, pro: 10 };
+  const today = new Date().toISOString().slice(0, 10);
+  const mapsToday = profile?.last_map_date === today ? (profile?.maps_today ?? 0) : 0;
+  const mapsLimitReached = profile?.plan !== "max" && mapsToday >= (MAP_LIMITS[profile?.plan ?? "gratis"] ?? 3);
+  const mapsLimit = profile?.plan === "max" ? null : (MAP_LIMITS[profile?.plan ?? "gratis"] ?? 3);
+
   useEffect(() => {
     if (!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -164,6 +170,9 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         plan={profile?.plan}
         activeTab={sidebarTab}
         onTabChange={setSidebarTab}
+        mapsLimitReached={mapsLimitReached}
+        mapsLimit={mapsLimit}
+        mapsToday={mapsToday}
       />
 
       <main className="flex-1 min-w-0">
@@ -189,6 +198,10 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             initialNodes={mindMapData?.nodes}
             initialEdges={mindMapData?.edges}
             onSaved={refreshMindMaps}
+            mapsLimitReached={mapsLimitReached}
+            mapsLimit={mapsLimit}
+            mapsToday={mapsToday}
+            onMapGenerated={refreshProfile}
           />
         ) : screen === "journey" ? (
           <Journey
@@ -231,6 +244,9 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         onSelectJourney={handleOpenJourney}
         onNewJourney={() => handleOpenJourney()}
         plan={profile?.plan}
+        mapsLimitReached={mapsLimitReached}
+        mapsLimit={mapsLimit}
+        mapsToday={mapsToday}
       />
     </div>
   );

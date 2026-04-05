@@ -31,6 +31,9 @@ interface HistoryDrawerProps {
   onSelectJourney?: (item: JourneyItem) => void;
   onNewJourney?: () => void;
   plan?: string | null;
+  mapsLimitReached?: boolean;
+  mapsLimit?: number | null;
+  mapsToday?: number;
 }
 
 export default function HistoryDrawer({
@@ -48,6 +51,9 @@ export default function HistoryDrawer({
   onSelectJourney,
   onNewJourney,
   plan,
+  mapsLimitReached = false,
+  mapsLimit,
+  mapsToday = 0,
 }: HistoryDrawerProps) {
   const [tab, setTab] = useState<"licoes" | "mapas" | "jornadas">("licoes");
   const isMax = plan === "max";
@@ -156,10 +162,13 @@ export default function HistoryDrawer({
             )
           ) : tab === "mapas" ? (
             /* Mapas tab */
-            !isMax ? (
+            mapsLimitReached ? (
               <div className="flex flex-col items-center gap-3 mt-10 px-4 text-center">
                 <span className="text-3xl">🔒</span>
-                <p className="text-sm text-[#7a6a9a]">Mapas Mentais disponíveis no plano Max</p>
+                <p className="text-sm text-white/60 font-semibold">Limite diário atingido</p>
+                <p className="text-xs text-[#7a6a9a]">
+                  {mapsLimit != null ? `Você usou ${mapsToday}/${mapsLimit} mapas hoje.` : ""} Volte amanhã ou faça upgrade.
+                </p>
                 <a href="/planos" className="text-xs text-[#a78bfa] underline" onClick={onClose}>Ver planos</a>
               </div>
             ) : (

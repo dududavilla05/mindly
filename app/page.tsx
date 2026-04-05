@@ -7,6 +7,8 @@ export interface UserProfile {
   lessons_today: number;
   last_lesson_date: string;
   streak_days: number;
+  maps_today?: number;
+  last_map_date?: string | null;
 }
 
 export default async function RootPage() {
