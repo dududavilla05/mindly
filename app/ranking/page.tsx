@@ -40,6 +40,17 @@ export default async function RankingPage() {
 
   const rows = ranking ?? [];
 
+  // Fetch plan for each ranked user
+  const userIds = rows.map(r => r.user_id);
+  const planMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await adminSupabase
+      .from("profiles")
+      .select("id, plan")
+      .in("id", userIds);
+    for (const p of profiles ?? []) planMap[p.id] = p.plan ?? "gratis";
+  }
+
   return (
     <div className="min-h-screen bg-[#0f0a1e] text-white">
       <div className="max-w-xl mx-auto px-6 py-16">
@@ -101,13 +112,23 @@ export default async function RankingPage() {
                   </div>
 
                   {/* Email */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
                     <p className="text-sm font-medium text-white truncate">
                       {maskEmail(row.email)}
                       {isCurrentUser && (
                         <span className="ml-2 text-xs text-[#a78bfa] font-semibold">você</span>
                       )}
                     </p>
+                    {planMap[row.user_id] === "pro" && (
+                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, fontWeight: 600, background: "#7c3aed", color: "#fff", flexShrink: 0 }}>
+                        PRO
+                      </span>
+                    )}
+                    {planMap[row.user_id] === "max" && (
+                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, fontWeight: 600, background: "#f59e0b", color: "#1a1a1a", flexShrink: 0 }}>
+                        MAX
+                      </span>
+                    )}
                   </div>
 
                   {/* Contagem */}
