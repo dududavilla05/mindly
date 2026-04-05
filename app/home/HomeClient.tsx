@@ -149,6 +149,24 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleDeleteLesson = async (id: string) => {
+    if (!supabase) return;
+    await supabase.from("lesson_history").delete().eq("id", id);
+    refreshHistory();
+  };
+
+  const handleDeleteMindMap = async (id: string) => {
+    if (!supabase) return;
+    await supabase.from("mind_maps").delete().eq("id", id);
+    refreshMindMaps();
+  };
+
+  const handleDeleteJourney = async (id: string) => {
+    if (!supabase) return;
+    await supabase.from("journeys").delete().eq("id", id);
+    refreshJourneys();
+  };
+
   const handleSignOut = async () => {
     setUser(null);
     setProfile(null);
@@ -162,13 +180,16 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         history={history}
         loading={historyLoading}
         onSelectLesson={handleSelectHistoryLesson}
+        onDeleteLesson={handleDeleteLesson}
         mindMaps={mindMaps}
         mindMapsLoading={mindMapsLoading}
         onSelectMindMap={handleSelectMindMap}
+        onDeleteMindMap={handleDeleteMindMap}
         onNewMindMap={() => handleOpenMindMap()}
         journeys={journeys}
         journeysLoading={journeysLoading}
         onSelectJourney={handleOpenJourney}
+        onDeleteJourney={handleDeleteJourney}
         onNewJourney={() => handleOpenJourney()}
         plan={profile?.plan}
         activeTab={sidebarTab}
@@ -238,13 +259,16 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         history={history}
         loading={historyLoading}
         onSelectLesson={handleSelectHistoryLesson}
+        onDeleteLesson={handleDeleteLesson}
         mindMaps={mindMaps}
         mindMapsLoading={mindMapsLoading}
         onSelectMindMap={handleSelectMindMap}
+        onDeleteMindMap={handleDeleteMindMap}
         onNewMindMap={() => handleOpenMindMap()}
         journeys={journeys}
         journeysLoading={journeysLoading}
         onSelectJourney={handleOpenJourney}
+        onDeleteJourney={handleDeleteJourney}
         onNewJourney={() => handleOpenJourney()}
         plan={profile?.plan}
         mapsLimitReached={mapsLimitReached}

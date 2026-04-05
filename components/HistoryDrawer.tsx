@@ -22,13 +22,16 @@ interface HistoryDrawerProps {
   history: LessonHistoryItem[];
   loading: boolean;
   onSelectLesson: (item: LessonHistoryItem) => void;
+  onDeleteLesson?: (id: string) => void;
   mindMaps?: MindMapItem[];
   mindMapsLoading?: boolean;
   onSelectMindMap?: (item: MindMapItem) => void;
+  onDeleteMindMap?: (id: string) => void;
   onNewMindMap?: () => void;
   journeys?: JourneyItem[];
   journeysLoading?: boolean;
   onSelectJourney?: (item: JourneyItem) => void;
+  onDeleteJourney?: (id: string) => void;
   onNewJourney?: () => void;
   plan?: string | null;
   mapsLimitReached?: boolean;
@@ -36,19 +39,28 @@ interface HistoryDrawerProps {
   mapsToday?: number;
 }
 
+const TrashIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+  </svg>
+);
+
 export default function HistoryDrawer({
   open,
   onClose,
   history,
   loading,
   onSelectLesson,
+  onDeleteLesson,
   mindMaps = [],
   mindMapsLoading = false,
   onSelectMindMap,
+  onDeleteMindMap,
   onNewMindMap,
   journeys = [],
   journeysLoading = false,
   onSelectJourney,
+  onDeleteJourney,
   onNewJourney,
   plan,
   mapsLimitReached = false,
@@ -146,17 +158,28 @@ export default function HistoryDrawer({
             ) : (
               <div className="flex flex-col gap-1">
                 {history.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    onClick={() => handleSelectLesson(item)}
-                    className="text-left w-full rounded-xl p-3 active:scale-[0.98] transition-all duration-150"
+                    className="flex items-center rounded-xl transition-all duration-150"
                     style={{ background: "rgba(124,31,255,0.05)" }}
-                    onTouchStart={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
-                    onTouchEnd={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
                   >
-                    <p className="text-sm text-white/70 line-clamp-2 leading-snug">{item.subject}</p>
-                    <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
-                  </button>
+                    <div
+                      className="flex-1 p-3 cursor-pointer min-w-0 active:scale-[0.98]"
+                      onClick={() => handleSelectLesson(item)}
+                      onTouchStart={(e) => ((e.currentTarget.closest("div") as HTMLDivElement).style.background = "rgba(124,31,255,0.13)")}
+                      onTouchEnd={(e) => ((e.currentTarget.closest("div") as HTMLDivElement).style.background = "rgba(124,31,255,0.05)")}
+                    >
+                      <p className="text-sm text-white/70 line-clamp-2 leading-snug">{item.subject}</p>
+                      <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta lição?")) onDeleteLesson?.(item.id); }}
+                      className="shrink-0 p-2 mr-1 text-white/20 hover:text-red-400 active:text-red-400 transition-colors"
+                      title="Excluir"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 ))}
               </div>
             )
@@ -190,15 +213,23 @@ export default function HistoryDrawer({
                   <p className="text-xs text-center text-white/25 mt-6">Nenhum mapa salvo</p>
                 ) : (
                   mindMaps.map((item) => (
-                    <button
+                    <div
                       key={item.id}
-                      onClick={() => handleSelectMindMap(item)}
-                      className="text-left w-full rounded-xl p-3 active:scale-[0.98] transition-all"
+                      className="flex items-center rounded-xl transition-all"
                       style={{ background: "rgba(124,31,255,0.05)" }}
                     >
-                      <p className="text-sm text-white/70 line-clamp-1">{item.title}</p>
-                      <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
-                    </button>
+                      <div className="flex-1 p-3 cursor-pointer min-w-0 active:scale-[0.98]" onClick={() => handleSelectMindMap(item)}>
+                        <p className="text-sm text-white/70 line-clamp-1">{item.title}</p>
+                        <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir este mapa mental?")) onDeleteMindMap?.(item.id); }}
+                        className="shrink-0 p-2 mr-1 text-white/20 hover:text-red-400 active:text-red-400 transition-colors"
+                        title="Excluir"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -233,35 +264,46 @@ export default function HistoryDrawer({
                   journeys.map((item) => {
                     const pct = Math.round((item.completed_days / item.duration_days) * 100);
                     return (
-                      <button
+                      <div
                         key={item.id}
-                        onClick={() => handleSelectJourney(item)}
-                        className="text-left w-full rounded-xl p-3 active:scale-[0.98] transition-all flex flex-col gap-2"
+                        className="flex items-center rounded-xl transition-all"
                         style={{ background: "rgba(124,31,255,0.05)" }}
-                        onTouchStart={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
-                        onTouchEnd={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm text-white/70 line-clamp-1 flex-1">{item.title}</p>
-                          <span className="text-[10px] font-bold shrink-0" style={{ color: pct === 100 ? "#4ade80" : "#a78bca" }}>
-                            {pct}%
-                          </span>
+                        <div
+                          className="flex-1 p-3 cursor-pointer min-w-0 flex flex-col gap-2 active:scale-[0.98]"
+                          onClick={() => handleSelectJourney(item)}
+                          onTouchStart={(e) => ((e.currentTarget.closest("div") as HTMLDivElement).style.background = "rgba(124,31,255,0.13)")}
+                          onTouchEnd={(e) => ((e.currentTarget.closest("div") as HTMLDivElement).style.background = "rgba(124,31,255,0.05)")}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm text-white/70 line-clamp-1 flex-1">{item.title}</p>
+                            <span className="text-[10px] font-bold shrink-0" style={{ color: pct === 100 ? "#4ade80" : "#a78bca" }}>
+                              {pct}%
+                            </span>
+                          </div>
+                          <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(124,31,255,0.15)" }}>
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${pct}%`,
+                                background: pct === 100
+                                  ? "linear-gradient(90deg, #22c55e, #4ade80)"
+                                  : "linear-gradient(90deg, #7c1fff, #a66aff)",
+                              }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-white/25">
+                            {item.completed_days} de {item.duration_days} dias · {timeAgo(item.created_at)}
+                          </p>
                         </div>
-                        <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(124,31,255,0.15)" }}>
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${pct}%`,
-                              background: pct === 100
-                                ? "linear-gradient(90deg, #22c55e, #4ade80)"
-                                : "linear-gradient(90deg, #7c1fff, #a66aff)",
-                            }}
-                          />
-                        </div>
-                        <p className="text-[10px] text-white/25">
-                          {item.completed_days} de {item.duration_days} dias · {timeAgo(item.created_at)}
-                        </p>
-                      </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta jornada? Todo o progresso será perdido.")) onDeleteJourney?.(item.id); }}
+                          className="shrink-0 p-2 mr-1 text-white/20 hover:text-red-400 active:text-red-400 transition-colors"
+                          title="Excluir"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
                     );
                   })
                 )}

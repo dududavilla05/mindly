@@ -20,13 +20,16 @@ interface SidebarProps {
   history: LessonHistoryItem[];
   loading: boolean;
   onSelectLesson: (item: LessonHistoryItem) => void;
+  onDeleteLesson?: (id: string) => void;
   mindMaps?: MindMapItem[];
   mindMapsLoading?: boolean;
   onSelectMindMap?: (item: MindMapItem) => void;
+  onDeleteMindMap?: (id: string) => void;
   onNewMindMap?: () => void;
   journeys?: JourneyItem[];
   journeysLoading?: boolean;
   onSelectJourney?: (item: JourneyItem) => void;
+  onDeleteJourney?: (id: string) => void;
   onNewJourney?: () => void;
   plan?: string | null;
   activeTab?: "licoes" | "mapas" | "jornadas";
@@ -36,17 +39,26 @@ interface SidebarProps {
   mapsToday?: number;
 }
 
+const TrashIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+  </svg>
+);
+
 export default function Sidebar({
   history,
   loading,
   onSelectLesson,
+  onDeleteLesson,
   mindMaps = [],
   mindMapsLoading = false,
   onSelectMindMap,
+  onDeleteMindMap,
   onNewMindMap,
   journeys = [],
   journeysLoading = false,
   onSelectJourney,
+  onDeleteJourney,
   onNewJourney,
   plan,
   activeTab = "licoes",
@@ -123,17 +135,25 @@ export default function Sidebar({
           ) : (
             <div className="flex flex-col gap-1">
               {history.map((item) => (
-                <button
+                <div
                   key={item.id}
-                  onClick={() => onSelectLesson(item)}
-                  className="text-left w-full rounded-xl p-3 transition-all duration-150 group"
+                  className="group flex items-center rounded-xl transition-all duration-150"
                   style={{ background: "rgba(124,31,255,0.05)" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
                 >
-                  <p className="text-sm text-white/70 group-hover:text-white line-clamp-2 leading-snug">{item.subject}</p>
-                  <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
-                </button>
+                  <div className="flex-1 p-3 cursor-pointer min-w-0" onClick={() => onSelectLesson(item)}>
+                    <p className="text-sm text-white/70 group-hover:text-white line-clamp-2 leading-snug">{item.subject}</p>
+                    <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta lição?")) onDeleteLesson?.(item.id); }}
+                    className="shrink-0 p-2 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
+                    title="Excluir"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               ))}
             </div>
           )
@@ -166,17 +186,25 @@ export default function Sidebar({
                 <p className="text-xs text-center text-white/25 mt-6">Nenhum mapa salvo</p>
               ) : (
                 mindMaps.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    onClick={() => onSelectMindMap?.(item)}
-                    className="text-left w-full rounded-xl p-3 transition-all duration-150 group"
+                    className="group flex items-center rounded-xl transition-all duration-150"
                     style={{ background: "rgba(124,31,255,0.05)" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
                   >
-                    <p className="text-sm text-white/70 group-hover:text-white line-clamp-1 leading-snug">{item.title}</p>
-                    <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
-                  </button>
+                    <div className="flex-1 p-3 cursor-pointer min-w-0" onClick={() => onSelectMindMap?.(item)}>
+                      <p className="text-sm text-white/70 group-hover:text-white line-clamp-1 leading-snug">{item.title}</p>
+                      <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir este mapa mental?")) onDeleteMindMap?.(item.id); }}
+                      className="shrink-0 p-2 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
+                      title="Excluir"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 ))
               )}
             </div>
@@ -211,28 +239,36 @@ export default function Sidebar({
                 journeys.map((item) => {
                   const pct = Math.round((item.completed_days / item.duration_days) * 100);
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      onClick={() => onSelectJourney?.(item)}
-                      className="text-left w-full rounded-xl p-3 transition-all duration-150 group flex flex-col gap-1.5"
+                      className="group flex items-center rounded-xl transition-all duration-150"
                       style={{ background: "rgba(124,31,255,0.05)" }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.13)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(124,31,255,0.05)")}
                     >
-                      <p className="text-sm text-white/70 group-hover:text-white line-clamp-1 leading-snug">{item.title}</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(124,31,255,0.15)" }}>
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${pct}%`,
-                              background: pct === 100 ? "#4ade80" : "linear-gradient(90deg, #7c1fff, #a66aff)",
-                            }}
-                          />
+                      <div className="flex-1 p-3 cursor-pointer min-w-0 flex flex-col gap-1.5" onClick={() => onSelectJourney?.(item)}>
+                        <p className="text-sm text-white/70 group-hover:text-white line-clamp-1 leading-snug">{item.title}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(124,31,255,0.15)" }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${pct}%`,
+                                background: pct === 100 ? "#4ade80" : "linear-gradient(90deg, #7c1fff, #a66aff)",
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-white/30 shrink-0">{pct}%</span>
                         </div>
-                        <span className="text-[10px] text-white/30 shrink-0">{pct}%</span>
                       </div>
-                    </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta jornada? Todo o progresso será perdido.")) onDeleteJourney?.(item.id); }}
+                        className="shrink-0 p-2 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
+                        title="Excluir"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   );
                 })
               )}
