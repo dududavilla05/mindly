@@ -14,7 +14,16 @@ interface MindMapViewerProps {
   topic?: string;
 }
 
-const NODE_RADIUS = [68, 46, 33, 25];
+// Rounded-rectangle dimensions per level
+const NODE_SIZES = [
+  { w: 160, h: 60, rx: 12 },  // level 0 — root
+  { w: 140, h: 50, rx: 12 },  // level 1
+  { w: 120, h: 40, rx: 12 },  // level 2+
+];
+
+function nodeSize(level: number) {
+  return NODE_SIZES[Math.min(level, NODE_SIZES.length - 1)];
+}
 
 const GRADIENT_COLORS: [string, string][] = [
   ["#9c3fff", "#5010cc"],
@@ -23,41 +32,6 @@ const GRADIENT_COLORS: [string, string][] = [
   ["#ec4899", "#9d1451"],
   ["#3b82f6", "#1d4ed8"],
 ];
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  return h >>> 0;
-}
-
-function smoothClosedPath(pts: Array<[number, number]>): string {
-  const N = pts.length;
-  const t = 0.38;
-  const tangents = pts.map((_, i) => {
-    const prev = pts[(i - 1 + N) % N];
-    const next = pts[(i + 1) % N];
-    return [(next[0] - prev[0]) * t, (next[1] - prev[1]) * t] as [number, number];
-  });
-  let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
-  for (let i = 0; i < N; i++) {
-    const j = (i + 1) % N;
-    const cp1 = [pts[i][0] + tangents[i][0] / 3, pts[i][1] + tangents[i][1] / 3];
-    const cp2 = [pts[j][0] - tangents[j][0] / 3, pts[j][1] - tangents[j][1] / 3];
-    d += ` C ${cp1[0].toFixed(2)} ${cp1[1].toFixed(2)} ${cp2[0].toFixed(2)} ${cp2[1].toFixed(2)} ${pts[j][0].toFixed(2)} ${pts[j][1].toFixed(2)}`;
-  }
-  return d + " Z";
-}
-
-function blobPath(r: number, seed: string, nPts = 8, variance = 0.14): string {
-  const h = hashStr(seed);
-  const pts: Array<[number, number]> = Array.from({ length: nPts }, (_, i) => {
-    const angle = (2 * Math.PI * i / nPts) - Math.PI / 2;
-    const rnd = ((h >>> (i * 4)) & 0xff) / 255;
-    const ri = r * (1 - variance + rnd * variance * 2);
-    return [ri * Math.cos(angle), ri * Math.sin(angle)];
-  });
-  return smoothClosedPath(pts);
-}
 
 function nodeGradient(node: MindMapNode, allNodes: MindMapNode[]): { fill: string; strokeColor: string } {
   if (node.level === 0) return { fill: "url(#grad-root)", strokeColor: "#b06aff" };
@@ -143,16 +117,19 @@ function runForceLayout(
         .distance((l: any) => {
           const tgtId = typeof l.target === "string" ? l.target : l.target.id;
           const tgt = nodeMap.get(tgtId);
-          return (tgt?.level ?? 2) === 1 ? 175 : 115;
+          return (tgt?.level ?? 2) === 1 ? 185 : 130;
         })
         .strength(0.9)
     )
-    .force("charge", d3.forceManyBody<SimNode>().strength(-430))
+    .force("charge", d3.forceManyBody<SimNode>().strength(-480))
     .force("center", d3.forceCenter<SimNode>(cx, cy).strength(0.06))
     .force("collide",
       d3.forceCollide<SimNode>()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .radius((d: any) => NODE_RADIUS[Math.min(d.level ?? 2, NODE_RADIUS.length - 1)] + 22)
+        .radius((d: any) => {
+          const s = nodeSize(d.level ?? 2);
+          return Math.sqrt((s.w / 2) ** 2 + (s.h / 2) ** 2) + 20;
+        })
         .strength(1)
         .iterations(4)
     )
@@ -340,28 +317,31 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
         onTouchEnd={handleSvgTouchEnd}
       >
         <defs>
-          <radialGradient id="grad-root" cx="35%" cy="30%" r="70%" gradientUnits="objectBoundingBox">
+          {/* Root gradient */}
+          <linearGradient id="grad-root" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#b06aff" />
             <stop offset="100%" stopColor="#5010cc" />
-          </radialGradient>
+          </linearGradient>
+          {/* Per-branch gradients */}
           {GRADIENT_COLORS.map(([c1, c2], i) => (
             <Fragment key={i}>
-              <radialGradient id={`grad-${i}`} cx="35%" cy="30%" r="70%" gradientUnits="objectBoundingBox">
+              <linearGradient id={`grad-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor={c1} />
                 <stop offset="100%" stopColor={c2} />
-              </radialGradient>
-              <radialGradient id={`grad-${i}-sub`} cx="35%" cy="30%" r="70%" gradientUnits="objectBoundingBox">
-                <stop offset="0%" stopColor={c1} stopOpacity="0.75" />
-                <stop offset="100%" stopColor={c2} stopOpacity="0.75" />
-              </radialGradient>
+              </linearGradient>
+              <linearGradient id={`grad-${i}-sub`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={c1} stopOpacity="0.72" />
+                <stop offset="100%" stopColor={c2} stopOpacity="0.72" />
+              </linearGradient>
             </Fragment>
           ))}
-          <filter id="glow-lg" x="-60%" y="-60%" width="220%" height="220%">
+          {/* Glow filters */}
+          <filter id="glow-lg" x="-60%" y="-100%" width="220%" height="300%">
             <feGaussianBlur stdDeviation="8" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <filter id="glow-sm" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+          <filter id="glow-sm" x="-40%" y="-80%" width="180%" height="260%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
           <filter id="text-shadow">
@@ -403,21 +383,22 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
             const pos = positions.get(node.id);
             if (!pos) return null;
 
-            const r = NODE_RADIUS[Math.min(node.level, NODE_RADIUS.length - 1)];
+            const { w, h, rx } = nodeSize(node.level);
+            const hw = w / 2;
+            const hh = h / 2;
             const { fill, strokeColor } = nodeGradient(node, nodes);
             const isRoot = node.level === 0;
             const isExpanding = expandingId === node.id;
             const isSelected = selectedNode?.id === node.id;
 
-            const nPts = isRoot ? 10 : node.level === 1 ? 8 : 7;
-            const variance = isRoot ? 0.07 : 0.16;
-            const blob = blobPath(r, node.id, nPts, variance);
-
-            const maxLen = isRoot ? 16 : node.level === 1 ? 13 : 10;
+            const maxLen = isRoot ? 18 : node.level === 1 ? 15 : 13;
             const lines = wrapLabel(node.label, maxLen);
-            const fontSize = isRoot ? 14 : node.level === 1 ? 12 : 10;
+            const fontSize = isRoot ? 14 : node.level === 1 ? 12 : 11;
             const lineH = fontSize + 4;
             const totalTextH = (lines.length - 1) * lineH;
+
+            // Selection / expanding ring padding
+            const pad = 8;
 
             return (
               <g
@@ -429,59 +410,72 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
                 onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                 onTouchStart={(e) => { e.stopPropagation(); handleNodeTouchStart(e, node.id); }}
               >
+                {/* Root outer glow halo */}
                 {isRoot && (
-                  <path
-                    d={blobPath(r + 22, node.id + "__halo", nPts, 0.05)}
+                  <rect
+                    x={-(hw + 14)} y={-(hh + 14)}
+                    width={w + 28} height={h + 28}
+                    rx={rx + 6}
                     fill="rgba(124,31,255,0.15)"
+                    style={{ pointerEvents: "none" }}
                   />
                 )}
 
-                {/* Selection ring */}
+                {/* Selection dashed ring */}
                 {isSelected && (
-                  <circle
-                    r={r + 16}
+                  <rect
+                    x={-(hw + pad)} y={-(hh + pad)}
+                    width={w + pad * 2} height={h + pad * 2}
+                    rx={rx + 4}
                     fill="none"
                     stroke="rgba(200,140,255,0.6)"
                     strokeWidth="2"
                     strokeDasharray="6 3"
-                    style={{ animation: "spin 3s linear infinite" }}
+                    style={{ animation: "spin 3s linear infinite", transformOrigin: "0 0" }}
                   />
                 )}
 
-                <path
-                  d={blob}
+                {/* Main rounded rect */}
+                <rect
+                  x={-hw} y={-hh}
+                  width={w} height={h}
+                  rx={rx}
                   fill={fill}
-                  stroke={isExpanding || isSelected ? "#fff" : strokeColor + "55"}
+                  stroke={isExpanding || isSelected ? "#fff" : strokeColor + "66"}
                   strokeWidth={isExpanding || isSelected ? 2 : 1.5}
                   filter={isRoot ? "url(#glow-lg)" : "url(#glow-sm)"}
                 />
 
-                <ellipse
-                  rx={r * 0.42}
-                  ry={r * 0.28}
-                  cx={-r * 0.18}
-                  cy={-r * 0.22}
-                  fill="rgba(255,255,255,0.13)"
+                {/* Glass highlight (top strip) */}
+                <rect
+                  x={-hw + 8} y={-hh + 5}
+                  width={w - 16} height={h * 0.3}
+                  rx={rx - 4}
+                  fill="rgba(255,255,255,0.12)"
                   style={{ pointerEvents: "none" }}
                 />
 
+                {/* Expanding dashed ring */}
                 {isExpanding && (
-                  <circle
-                    r={r + 12}
+                  <rect
+                    x={-(hw + pad)} y={-(hh + pad)}
+                    width={w + pad * 2} height={h + pad * 2}
+                    rx={rx + 4}
                     fill="none"
                     stroke="rgba(255,255,255,0.45)"
                     strokeWidth="1.5"
                     strokeDasharray="5 4"
-                    style={{ animation: "spin 1.5s linear infinite" }}
+                    style={{ animation: "spin 1.5s linear infinite", transformOrigin: "0 0" }}
                   />
                 )}
 
+                {/* Label text — vertically centred */}
                 {lines.map((line, i) => (
                   <text
                     key={i}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    dy={-totalTextH / 2 + i * lineH}
+                    y={-totalTextH / 2 + i * lineH}
                     fill="white"
                     fontSize={fontSize}
                     fontWeight={isRoot ? 700 : node.level === 1 ? 600 : 400}
