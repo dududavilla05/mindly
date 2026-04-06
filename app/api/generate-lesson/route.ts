@@ -214,15 +214,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Montar conteúdo para a IA
-    type ContentBlockParam = Anthropic.Messages.ContentBlockParam;
-    const userContent: ContentBlockParam[] = [];
+    const isJourney = !!(journeyMode && journeyContext);
 
-    if (journeyMode && journeyContext) {
-      const { day, totalDays, journeyTitle, journeyObjective } = journeyContext;
-      userContent.push({
-        type: "text",
-        text: `Jornada: "${journeyTitle}"${journeyObjective ? ` — Objetivo: ${journeyObjective}` : ""}
+    // ── Cache lookup (somente lições normais — não journey, não imagem) ──
+    let lessonData: unknown = null;
+    let fromCache = false;
+
+    if (!imageBase64 && !isJourney && subject?.trim()) {
+      const { data: cacheRows } = await adminSupabase
+        .from("lesson_history")
+        .select("lesson_data")
+        .ilike("subject", subject.trim())
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      // Ignora lições de jornada (formato diferente com isJourneyLesson: true)
+      const hit = cacheRows?.find(
+        (r) => !(r.lesson_data as Record<string, unknown>)?.isJourneyLesson
+      );
+      if (hit?.lesson_data) {
+        lessonData = hit.lesson_data;
+        fromCache = true;
+        console.log(`[generate-lesson] Cache hit para: "${subject}"`);
+      }
+    }
+
+    // ── Chamada à API da Anthropic (apenas se não houver cache) ──
+    if (!fromCache) {
+      type ContentBlockParam = Anthropic.Messages.ContentBlockParam;
+      const userContent: ContentBlockParam[] = [];
+
+      if (isJourney && journeyContext) {
+        const { day, totalDays, journeyTitle, journeyObjective } = journeyContext;
+        userContent.push({
+          type: "text",
+          text: `Jornada: "${journeyTitle}"${journeyObjective ? ` — Objetivo: ${journeyObjective}` : ""}
 Dia ${day} de ${totalDays}: ${subject}
 
 Crie uma aula completa e aprofundada sobre "${subject}" para o Dia ${day} desta jornada de ${totalDays} dias.
@@ -230,72 +256,70 @@ ${day > 1 ? `O aluno já completou ${day - 1} dia(s) de estudo nesta jornada, en
 ${day === totalDays ? "Este é o último dia da jornada — conclua com uma visão completa do que foi aprendido e próximos passos além da jornada." : ""}
 
 Gere o JSON completo conforme o formato especificado, com conteúdo suficiente para 30-45 minutos de estudo real.`,
-      });
-    } else if (imageBase64 && imageMimeType) {
-      const validMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
-      type ImageMimeType = typeof validMimeTypes[number];
-      const mimeType: ImageMimeType = validMimeTypes.includes(imageMimeType as ImageMimeType)
-        ? (imageMimeType as ImageMimeType)
-        : "image/jpeg";
+        });
+      } else if (imageBase64 && imageMimeType) {
+        const validMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+        type ImageMimeType = typeof validMimeTypes[number];
+        const mimeType: ImageMimeType = validMimeTypes.includes(imageMimeType as ImageMimeType)
+          ? (imageMimeType as ImageMimeType)
+          : "image/jpeg";
 
-      userContent.push({
-        type: "image",
-        source: { type: "base64", media_type: mimeType, data: imageBase64 },
+        userContent.push({
+          type: "image",
+          source: { type: "base64", media_type: mimeType, data: imageBase64 },
+        });
+        userContent.push({
+          type: "text",
+          text: subject
+            ? `Analise esta imagem e gere uma lição sobre: ${subject}`
+            : "Analise esta imagem e gere uma lição sobre o que ela representa ou contém.",
+        });
+      } else {
+        userContent.push({
+          type: "text",
+          text: `Crie uma lição ÚNICA e ESPECÍFICA sobre: ${subject}\nEsta lição deve ter uma perspectiva original e diferente de qualquer outra lição sobre este tema.\nEscolha um ângulo surpreendente, pouco conhecido ou contraintuitivo sobre o assunto.`,
+        });
+      }
+
+      console.log(`[generate-lesson] mode=${isJourney ? "journey" : "normal"} subject="${subject}" maxTokens=${isJourney ? 8000 : 1500}`);
+
+      const response = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: isJourney ? 8000 : 1500,
+        temperature: isJourney ? 0.8 : 1.0,
+        system: isJourney ? JOURNEY_SYSTEM_PROMPT : SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userContent }],
       });
-      userContent.push({
-        type: "text",
-        text: subject
-          ? `Analise esta imagem e gere uma lição sobre: ${subject}`
-          : "Analise esta imagem e gere uma lição sobre o que ela representa ou contém.",
-      });
-    } else {
-      userContent.push({
-        type: "text",
-        text: `Crie uma lição ÚNICA e ESPECÍFICA sobre: ${subject}\nEsta lição deve ter uma perspectiva original e diferente de qualquer outra lição sobre este tema.\nEscolha um ângulo surpreendente, pouco conhecido ou contraintuitivo sobre o assunto.`,
-      });
+
+      const textContent = response.content.find((c) => c.type === "text");
+      if (!textContent || textContent.type !== "text") {
+        console.error("[generate-lesson] No text content in response. stop_reason:", response.stop_reason);
+        throw new Error("Resposta inválida da IA");
+      }
+
+      const rawText = textContent.text.trim();
+      console.log(`[generate-lesson] stop_reason=${response.stop_reason} chars=${rawText.length} first300=${rawText.substring(0, 300)}`);
+
+      // Strip markdown code fences if present (e.g. ```json ... ```)
+      const jsonText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+
+      if (!jsonMatch) {
+        console.error("[generate-lesson] JSON block not found. raw(800):", rawText.substring(0, 800));
+        throw new Error("JSON não encontrado na resposta da IA");
+      }
+
+      lessonData = repairJson(jsonMatch[0]);
+
+      if (!lessonData) {
+        console.error("[generate-lesson] JSON repair failed. candidate(800):", jsonMatch[0].substring(0, 800));
+        throw new Error("Não foi possível processar a resposta da IA. Tente novamente.");
+      }
+
+      console.log("[generate-lesson] parsed OK, title:", (lessonData as Record<string, unknown>)?.title);
     }
 
-    const isJourney = !!(journeyMode && journeyContext);
-    console.log(`[generate-lesson] mode=${isJourney ? "journey" : "normal"} subject="${subject}" maxTokens=${isJourney ? 4000 : 1500}`);
-
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: isJourney ? 8000 : 1500,
-      temperature: isJourney ? 0.8 : 1.0,
-      system: isJourney ? JOURNEY_SYSTEM_PROMPT : SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userContent }],
-    });
-
-    const textContent = response.content.find((c) => c.type === "text");
-    if (!textContent || textContent.type !== "text") {
-      console.error("[generate-lesson] No text content in response. stop_reason:", response.stop_reason);
-      throw new Error("Resposta inválida da IA");
-    }
-
-    const rawText = textContent.text.trim();
-    console.log(`[generate-lesson] stop_reason=${response.stop_reason} chars=${rawText.length} first300=${rawText.substring(0, 300)}`);
-
-    let lessonData;
-    // Strip markdown code fences if present (e.g. ```json ... ```)
-    let jsonText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      console.error("[generate-lesson] JSON block not found. raw(800):", rawText.substring(0, 800));
-      throw new Error("JSON não encontrado na resposta da IA");
-    }
-
-    const candidate = jsonMatch[0];
-    lessonData = repairJson(candidate);
-
-    if (!lessonData) {
-      console.error("[generate-lesson] JSON repair failed. candidate(800):", candidate.substring(0, 800));
-      throw new Error("Não foi possível processar a resposta da IA. Tente novamente.");
-    }
-
-    console.log("[generate-lesson] parsed OK, title:", (lessonData as Record<string, unknown>)?.title);
-
-    // Salvar histórico
+    // Salvar no histórico do usuário (sempre, mesmo vindo do cache)
     if (user) {
       await adminSupabase.from("lesson_history").insert({
         user_id: user.id,
