@@ -8,6 +8,7 @@ import HomeScreen from "@/components/HomeScreen";
 import LessonScreen from "@/components/LessonScreen";
 import MindMap from "@/components/MindMap";
 import Journey from "@/components/Journey";
+import LanguageModule from "@/components/LanguageModule";
 import Sidebar from "@/components/Sidebar";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import { useHistory } from "@/hooks/useHistory";
@@ -25,7 +26,7 @@ interface HomeClientProps {
   initialProfile: UserProfile | null;
 }
 
-type AppScreen = "home" | "lesson" | "mindmap" | "journey";
+type AppScreen = "home" | "lesson" | "mindmap" | "journey" | "idiomas";
 
 export default function HomeClient({ initialUser, initialProfile }: HomeClientProps) {
   const router = useRouter();
@@ -149,6 +150,11 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleOpenLanguage = () => {
+    setScreen("idiomas");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleDeleteLesson = async (id: string) => {
     if (!supabase) return;
     // Optimistic: remove from UI immediately
@@ -249,6 +255,12 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onLessonGenerated={handleLessonFromJourney}
             onSaved={refreshJourneys}
           />
+        ) : screen === "idiomas" ? (
+          <LanguageModule
+            profile={profile}
+            onBack={() => setScreen("home")}
+            onProfileUpdated={refreshProfile}
+          />
         ) : (
           <HomeScreen
             onLessonGenerated={handleLessonGenerated}
@@ -258,6 +270,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onOpenHistory={() => setDrawerOpen(true)}
             onOpenMindMap={() => handleOpenMindMap()}
             onOpenJourney={() => handleOpenJourney()}
+            onOpenLanguage={handleOpenLanguage}
           />
         )}
       </main>

@@ -9,6 +9,8 @@ export interface UserProfile {
   streak_days: number;
   maps_today?: number;
   last_map_date?: string | null;
+  language_learning?: string | null;
+  language_level?: string | null;
 }
 
 export default async function RootPage() {

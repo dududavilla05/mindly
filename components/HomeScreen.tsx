@@ -28,6 +28,7 @@ interface HomeScreenProps {
   onOpenHistory?: () => void;
   onOpenMindMap?: () => void;
   onOpenJourney?: () => void;
+  onOpenLanguage?: () => void;
 }
 
 export default function HomeScreen({
@@ -38,6 +39,7 @@ export default function HomeScreen({
   onOpenHistory,
   onOpenMindMap,
   onOpenJourney,
+  onOpenLanguage,
 }: HomeScreenProps) {
   const [subject, setSubject] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -275,6 +277,39 @@ export default function HomeScreen({
                 </svg>
                 Mapa
               </button>
+
+              {/* Idiomas */}
+              {profile?.plan === "max" ? (
+                <button
+                  onClick={onOpenLanguage}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
+                  style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                  Idiomas
+                </button>
+              ) : (
+                <div className="relative group">
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#4a3870] cursor-pointer"
+                    style={{ background: "rgba(124,31,255,0.06)", border: "1px solid rgba(124,31,255,0.15)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Idiomas
+                  </button>
+                  <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
+                    Exclusivo plano Max
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>,
@@ -346,6 +381,41 @@ export default function HomeScreen({
                 </svg>
                 Mapa Mental
               </button>
+            )}
+
+            {/* Idiomas */}
+            {user && (
+              profile?.plan === "max" ? (
+                <button
+                  onClick={onOpenLanguage}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                  style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                  Idiomas
+                </button>
+              ) : (
+                <div className="relative group">
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#4a3870] cursor-pointer hover:text-[#7a6a9a] transition-colors"
+                    style={{ background: "rgba(124,31,255,0.06)", border: "1px solid rgba(124,31,255,0.12)" }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Idiomas
+                  </button>
+                  <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
+                    Exclusivo plano Max
+                  </div>
+                </div>
+              )
             )}
 
             {/* Avatar / Entrar */}
