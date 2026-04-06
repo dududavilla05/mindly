@@ -136,6 +136,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [sessionsLoading,  setSessionsLoading]  = useState(false);
   const [sessionId,        setSessionId]        = useState<string | null>(null);
   const [savingSession,    setSavingSession]    = useState(false);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
   const bottomRef    = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLTextAreaElement>(null);
@@ -273,6 +274,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   };
 
   const loadSession = (session: Session) => {
+    setShowHistoryDrawer(false);
     setSelectedLanguage(session.language);
     setSelectedLevel(session.level);
     setMessages(session.messages);
@@ -411,6 +413,20 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
           {view === "chat" && savingSession && (
             <span className="text-[10px] text-[#5a4870] hidden md:block">salvando...</span>
           )}
+
+          {/* Botão Histórico — mobile only (lg+ tem o painel lateral) */}
+          <button
+            onClick={() => setShowHistoryDrawer(true)}
+            className="flex lg:hidden items-center justify-center rounded-xl text-[#c39dff] hover:text-white transition-all duration-200 shrink-0"
+            style={{ width: "44px", height: "44px", background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+            aria-label="Histórico de sessões"
+            title="Histórico"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
 
           {/* Botão Nova Conversa — visível no mobile quando em chat */}
           {view === "chat" && (
@@ -759,6 +775,93 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Drawer de Histórico — mobile (< lg) ── */}
+      {showHistoryDrawer && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 lg:hidden"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            onClick={() => setShowHistoryDrawer(false)}
+          />
+          {/* Drawer deslizante de baixo */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col lg:hidden"
+            style={{
+              background: "rgba(14,9,28,0.98)",
+              border: "1px solid rgba(124,31,255,0.25)",
+              borderRadius: "20px 20px 0 0",
+              maxHeight: "78dvh",
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.6)",
+            }}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full" style={{ background: "rgba(124,31,255,0.35)" }} />
+            </div>
+            {/* Header do drawer */}
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b shrink-0"
+              style={{ borderColor: "rgba(124,31,255,0.15)" }}
+            >
+              <div className="flex items-center gap-2">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <p className="text-sm font-semibold text-[#c39dff]">Sessões anteriores</p>
+                {sessions.length > 0 && (
+                  <span
+                    className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                    style={{ background: "rgba(124,31,255,0.2)", color: "#a78bfa" }}
+                  >
+                    {sessions.length}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowHistoryDrawer(false)}
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-[#7a6a9a] hover:text-white transition-colors"
+                style={{ background: "rgba(124,31,255,0.1)" }}
+                aria-label="Fechar"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            {/* Lista de sessões */}
+            <div className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2">
+              {sessionsLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <span className="flex gap-1">
+                    {[0, 150, 300].map(d => (
+                      <span key={d} className="w-2 h-2 rounded-full bg-[#a78bfa] animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                    ))}
+                  </span>
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <span className="text-3xl">📭</span>
+                  <p className="text-[#4a3870] text-sm text-center">Nenhuma sessão ainda.<br />Comece sua primeira aula!</p>
+                </div>
+              ) : (
+                sessions.map(s => (
+                  <SessionCard
+                    key={s.id}
+                    session={s}
+                    active={s.id === sessionId}
+                    onLoad={loadSession}
+                    onDelete={handleDeleteSession}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

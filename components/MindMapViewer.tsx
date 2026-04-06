@@ -72,20 +72,25 @@ function runForceLayout(
   allEdges: MindMapEdge[],
   cx: number,
   cy: number,
-  existing: Map<string, Position>
+  existing: Map<string, Position>,
+  isMobile: boolean
 ): Map<string, Position> {
   const isExpansion = allNodes.some(n => existing.has(n.id) && n.level > 0);
 
+  // Mobile: tighter spread radius for initial positions
+  const initSpread = isMobile ? 160 : 320;
+  const initOrbit  = isMobile ? 50  : 80;
+
   const simNodes: SimNode[] = allNodes.map(n => {
     const pos = existing.get(n.id);
-    let ix = cx + (Math.random() - 0.5) * 320;
-    let iy = cy + (Math.random() - 0.5) * 320;
+    let ix = cx + (Math.random() - 0.5) * initSpread;
+    let iy = cy + (Math.random() - 0.5) * initSpread;
     if (!pos && n.parentId) {
       const pPos = existing.get(n.parentId);
       if (pPos) {
         const a = Math.random() * 2 * Math.PI;
-        ix = pPos.x + Math.cos(a) * 80;
-        iy = pPos.y + Math.sin(a) * 80;
+        ix = pPos.x + Math.cos(a) * initOrbit;
+        iy = pPos.y + Math.sin(a) * initOrbit;
       }
     }
     return {
@@ -107,6 +112,12 @@ function runForceLayout(
     }))
     .filter(l => nodeMap.has(l.source) && nodeMap.has(l.target));
 
+  // Mobile: shorter link distances, weaker repulsion, stronger centering
+  const linkDist1   = isMobile ? 85  : 185;
+  const linkDist2   = isMobile ? 60  : 130;
+  const chargeSt    = isMobile ? -160 : -480;
+  const centerSt    = isMobile ? 0.22 : 0.06;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sim = d3.forceSimulation<SimNode>(simNodes)
     .force("link",
@@ -117,18 +128,19 @@ function runForceLayout(
         .distance((l: any) => {
           const tgtId = typeof l.target === "string" ? l.target : l.target.id;
           const tgt = nodeMap.get(tgtId);
-          return (tgt?.level ?? 2) === 1 ? 185 : 130;
+          return (tgt?.level ?? 2) === 1 ? linkDist1 : linkDist2;
         })
         .strength(0.9)
     )
-    .force("charge", d3.forceManyBody<SimNode>().strength(-480))
-    .force("center", d3.forceCenter<SimNode>(cx, cy).strength(0.06))
+    .force("charge", d3.forceManyBody<SimNode>().strength(chargeSt))
+    .force("center", d3.forceCenter<SimNode>(cx, cy).strength(centerSt))
     .force("collide",
       d3.forceCollide<SimNode>()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .radius((d: any) => {
           const s = nodeSize(d.level ?? 2);
-          return Math.sqrt((s.w / 2) ** 2 + (s.h / 2) ** 2) + 20;
+          const pad = isMobile ? 8 : 20;
+          return Math.sqrt((s.w / 2) ** 2 + (s.h / 2) ** 2) + pad;
         })
         .strength(1)
         .iterations(4)
@@ -163,9 +175,12 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       const svg = svgRef.current;
-      const cx = (svg?.clientWidth ?? 700) / 2;
-      const cy = (svg?.clientHeight ?? 500) / 2;
-      const p = runForceLayout(nodes, edges, cx, cy, posRef.current);
+      const w   = svg?.clientWidth  ?? 700;
+      const h   = svg?.clientHeight ?? 500;
+      const cx  = w / 2;
+      const cy  = h / 2;
+      const isMobile = w < 768;
+      const p = runForceLayout(nodes, edges, cx, cy, posRef.current, isMobile);
       posRef.current = p;
       setPositions(new Map(p));
     });
