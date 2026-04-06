@@ -1,26 +1,34 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface LanguageMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+async function getAuthUser(request: NextRequest) {
+  const auth = request.headers.get("Authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) return null;
+  const token = auth.slice(7);
+  try {
+    const admin = createAdminClient();
+    const { data: { user } } = await admin.auth.getUser(token);
+    return user ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser(request);
     if (!user) {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
-    const adminSupabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const { data: profile } = await adminSupabase
+    const admin = createAdminClient();
+    const { data: profile } = await admin
       .from("profiles")
       .select("plan")
       .eq("id", user.id)

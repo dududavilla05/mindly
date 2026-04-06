@@ -4,6 +4,26 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { UserProfile } from "@/app/page";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+
+// Retorna headers com Authorization: Bearer <token> para as chamadas à API.
+// Sem isso, o servidor não consegue identificar o usuário (sem middleware de cookies).
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const base: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const supabase = createSupabaseClient();
+    if (!supabase) return base;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      base["Authorization"] = `Bearer ${session.access_token}`;
+    } else {
+      console.warn("[idiomas] getAuthHeaders: sem session — chamadas à API podem retornar 401");
+    }
+  } catch (err) {
+    console.error("[idiomas] getAuthHeaders error:", err);
+  }
+  return base;
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -154,7 +174,8 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   // ── Recarrega lista de sessões do banco ──
   const refreshSessions = useCallback(async () => {
     try {
-      const r = await fetch("/api/idiomas/sessions");
+      const headers = await getAuthHeaders();
+      const r = await fetch("/api/idiomas/sessions", { headers });
       const d = await r.json();
       if (d.error) {
         console.error("[idiomas] refreshSessions API error:", d.error);
@@ -194,9 +215,10 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     console.log("[idiomas:save] POST → sessionId:", currentSid ?? "NEW", "| msgs:", msgs.length);
 
+    const headers = await getAuthHeaders();
     const res = await fetch("/api/idiomas/sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -285,9 +307,10 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSessions(prev => prev.filter(s => s.id !== id));
+    const headers = await getAuthHeaders();
     await fetch("/api/idiomas/sessions", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ id }),
     });
     if (sessionIdRef.current === id) updateSessionId(null);
@@ -304,9 +327,10 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     setLoading(true);
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch("/api/idiomas", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           messages: messages.filter((m, i) => !(m.role === "assistant" && i === 0)),
           userMessage: msg,
