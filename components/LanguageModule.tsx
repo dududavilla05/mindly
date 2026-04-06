@@ -331,6 +331,26 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  // Inicia nova conversa com o mesmo idioma/nível sem voltar para seleção
+  const handleNovaConversa = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    doSave(messages, selectedLanguage, selectedLevel)
+      .catch(() => {})
+      .finally(() => refreshSessions());
+    const l = LANGUAGES.find(x => x.id === selectedLanguage);
+    const greeting: Message = {
+      role: "assistant",
+      content: `Nova conversa! Estou pronto para continuar praticando **${selectedLanguage}** no nível **${selectedLevel}**. O que quer aprender agora?`,
+      ts: new Date().toISOString(),
+    };
+    setMessages([greeting]);
+    updateSessionId(null);
+    setInput("");
+  };
+
   const handleEncerrar = () => {
     // Cancela timer de auto-save pendente
     if (saveTimerRef.current) {
@@ -352,17 +372,18 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const lang = LANGUAGES.find(l => l.id === selectedLanguage);
 
   return (
-    <div className="h-screen flex flex-col" style={{ background: "rgba(15,10,30,1)" }}>
+    <div className="h-[100dvh] flex flex-col" style={{ background: "rgba(15,10,30,1)" }}>
 
       {/* ── Header ── */}
       <div
-        className="shrink-0 flex items-center gap-3 px-4 md:px-6 h-14 border-b"
-        style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(16px)" }}
+        className="shrink-0 flex items-center gap-2 px-3 md:px-5 border-b"
+        style={{ height: "56px", background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(16px)" }}
       >
+        {/* Botão voltar — 44px min para iOS HIG */}
         <button
           onClick={view === "chat" ? handleEncerrar : onBack}
-          className="flex items-center justify-center w-8 h-8 rounded-xl text-[#a78bca] hover:text-white transition-colors shrink-0"
-          style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.2)" }}
+          className="flex items-center justify-center rounded-xl text-[#a78bca] hover:text-white transition-colors shrink-0"
+          style={{ width: "44px", height: "44px", background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.2)" }}
           aria-label="Voltar"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -370,7 +391,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
           </svg>
         </button>
 
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
             style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
@@ -378,19 +399,38 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
             🌍
           </div>
           <div className="min-w-0">
-            <p className="text-white font-semibold text-sm leading-none">Módulo de Idiomas</p>
+            <p className="text-white font-semibold text-sm leading-none truncate">Módulo de Idiomas</p>
             {view === "chat" && (
               <p className="text-[#7a6a9a] text-xs mt-0.5 truncate">{lang?.flag} {selectedLanguage} · {selectedLevel}</p>
             )}
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Indicador de salvamento — apenas desktop */}
           {view === "chat" && savingSession && (
-            <span className="text-[10px] text-[#5a4870] hidden sm:block">salvando...</span>
+            <span className="text-[10px] text-[#5a4870] hidden md:block">salvando...</span>
           )}
+
+          {/* Botão Nova Conversa — visível no mobile quando em chat */}
+          {view === "chat" && (
+            <button
+              onClick={handleNovaConversa}
+              className="flex items-center gap-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 shrink-0"
+              style={{ height: "44px", padding: "0 12px", background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+              title="Nova conversa"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span className="hidden sm:block">Nova conversa</span>
+              <span className="sm:hidden">Nova</span>
+            </button>
+          )}
+
+          {/* Badge Max */}
           <div
-            className="px-2.5 py-1 rounded-full text-xs font-semibold"
+            className="px-2.5 py-1 rounded-full text-xs font-semibold shrink-0"
             style={{ background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.3))", border: "1px solid rgba(124,31,255,0.4)", color: "#c39dff" }}
           >
             Max
@@ -602,12 +642,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               <div ref={bottomRef} />
             </div>
 
-            {/* ── Botão flutuante "Encerrar aula" ── */}
+            {/* ── Botão flutuante "Encerrar aula" — apenas desktop (sm+) ──
+                No mobile o botão de voltar no header cumpre esta função */}
             <button
               onClick={handleEncerrar}
-              className="absolute z-10 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105 active:scale-95"
+              className="hidden sm:flex absolute z-10 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105 active:scale-95"
               style={{
-                bottom: "128px",
+                bottom: "132px",
                 right: "16px",
                 background: "rgba(15,10,30,0.95)",
                 border: "1px solid rgba(124,31,255,0.35)",
@@ -621,18 +662,18 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               Encerrar aula
             </button>
 
-            {/* Quick actions */}
+            {/* Quick actions — scroll horizontal no mobile, wrap no desktop */}
             <div
-              className="px-4 pt-2.5 pb-2 flex flex-wrap gap-2 border-t shrink-0"
-              style={{ borderColor: "rgba(124,31,255,0.15)" }}
+              className="px-3 pt-2 pb-1.5 flex gap-2 border-t shrink-0 overflow-x-auto"
+              style={{ borderColor: "rgba(124,31,255,0.15)", scrollbarWidth: "none" }}
             >
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
                   onClick={() => sendMessage(action.label)}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)", color: "#c39dff" }}
+                  className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-medium transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+                  style={{ height: "36px", background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)", color: "#c39dff" }}
                 >
                   <span>{action.emoji}</span>
                   {action.label}
@@ -640,27 +681,39 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               ))}
             </div>
 
-            {/* Input */}
-            <div className="px-4 pb-4 pt-2 border-t shrink-0" style={{ borderColor: "rgba(124,31,255,0.2)" }}>
-              <div className="flex items-end gap-2">
+            {/* Input — min-w-0 e overflow-hidden evitam overflow horizontal */}
+            <div
+              className="px-3 pb-3 pt-2 border-t shrink-0"
+              style={{
+                borderColor: "rgba(124,31,255,0.2)",
+                paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
+              }}
+            >
+              <div className="flex items-end gap-2 min-w-0 overflow-hidden">
                 <textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={`Escreva em ${selectedLanguage} ou em português... (Enter para enviar)`}
+                  placeholder={`Escreva em ${selectedLanguage}...`}
                   rows={1}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-xl px-4 py-3 text-sm text-white placeholder-[#4a3870] outline-none transition-all duration-200 disabled:opacity-50"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(124,31,255,0.25)", maxHeight: "120px", lineHeight: "1.5" }}
+                  className="flex-1 min-w-0 resize-none rounded-xl px-3 py-3 text-sm text-white placeholder-[#4a3870] outline-none transition-all duration-200 disabled:opacity-50"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(124,31,255,0.25)",
+                    maxHeight: "120px",
+                    lineHeight: "1.5",
+                  }}
                   onFocus={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.6)"; }}
                   onBlur={(e)  => { e.target.style.border = "1px solid rgba(124,31,255,0.25)"; }}
                 />
+                {/* Botão enviar — 44px para iOS HIG, nunca some */}
                 <button
                   onClick={() => sendMessage()}
                   disabled={loading || !input.trim()}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                  style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
+                  className="flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  style={{ width: "44px", height: "44px", background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />

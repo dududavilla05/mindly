@@ -43,6 +43,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   const [saveIsError, setSaveIsError] = useState(false);
   const [error, setError] = useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const generate = useCallback(async () => {
@@ -254,29 +255,80 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
         </div>
 
         {nodes.length > 0 && (
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleExportPdf}
-              disabled={exportingPdf}
-              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
-              style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#34d399" }}
-              title="Exportar PDF"
-            >
-              {exportingPdf ? "Gerando…" : "📄 PDF"}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
-              style={{
-                background: saveIsError ? "rgba(239,68,68,0.12)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.12)" : "rgba(124,31,255,0.15)",
-                border: `1px solid ${saveIsError ? "rgba(239,68,68,0.35)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.35)" : "rgba(124,31,255,0.3)"}`,
-                color: saveIsError ? "#fca5a5" : savedMsg && !saveIsError ? "#86efac" : "#c39dff",
-              }}
-            >
-              {saving ? "Salvando…" : saveIsError ? "❌ " + savedMsg : savedMsg ? "✓ " + savedMsg : "💾 Salvar"}
-            </button>
-          </div>
+          <>
+            {/* Botões — desktop (sm+) */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+                style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#34d399" }}
+                title="Exportar PDF"
+              >
+                {exportingPdf ? "Gerando…" : "📄 PDF"}
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 disabled:opacity-50"
+                style={{
+                  background: saveIsError ? "rgba(239,68,68,0.12)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.12)" : "rgba(124,31,255,0.15)",
+                  border: `1px solid ${saveIsError ? "rgba(239,68,68,0.35)" : savedMsg && !saveIsError ? "rgba(34,197,94,0.35)" : "rgba(124,31,255,0.3)"}`,
+                  color: saveIsError ? "#fca5a5" : savedMsg && !saveIsError ? "#86efac" : "#c39dff",
+                }}
+              >
+                {saving ? "Salvando…" : saveIsError ? "❌ " + savedMsg : savedMsg ? "✓ " + savedMsg : "💾 Salvar"}
+              </button>
+            </div>
+
+            {/* 3-pontinhos — mobile (< sm) */}
+            <div className="relative flex sm:hidden shrink-0">
+              <button
+                onClick={() => setMobileMenuOpen(v => !v)}
+                className="flex items-center justify-center rounded-xl text-[#c39dff] hover:text-white transition-colors"
+                style={{ width: "44px", height: "44px", background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+                aria-label="Mais opções"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="5"  r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="12" cy="19" r="1.8" />
+                </svg>
+              </button>
+
+              {mobileMenuOpen && (
+                <>
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 z-20" onClick={() => setMobileMenuOpen(false)} />
+                  {/* Dropdown */}
+                  <div
+                    className="absolute right-0 top-full mt-2 z-30 flex flex-col min-w-[180px] rounded-2xl overflow-hidden"
+                    style={{ background: "rgba(14,9,28,0.98)", border: "1px solid rgba(124,31,255,0.25)", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}
+                  >
+                    <button
+                      onClick={() => { handleSave(); setMobileMenuOpen(false); }}
+                      disabled={saving}
+                      className="flex items-center gap-3 px-5 text-sm font-medium text-[#d4c0f0] hover:bg-white/5 active:bg-white/10 transition-colors disabled:opacity-50"
+                      style={{ height: "52px" }}
+                    >
+                      <span className="text-base">💾</span>
+                      {saving ? "Salvando..." : saveIsError ? "Erro ao salvar" : savedMsg ? "✓ Salvo!" : "Salvar mapa"}
+                    </button>
+                    <div style={{ borderTop: "1px solid rgba(124,31,255,0.12)" }} />
+                    <button
+                      onClick={() => { handleExportPdf(); setMobileMenuOpen(false); }}
+                      disabled={exportingPdf}
+                      className="flex items-center gap-3 px-5 text-sm font-medium text-[#d4c0f0] hover:bg-white/5 active:bg-white/10 transition-colors disabled:opacity-50"
+                      style={{ height: "52px" }}
+                    >
+                      <span className="text-base">📄</span>
+                      {exportingPdf ? "Gerando PDF..." : "Exportar PDF"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </header>
 
