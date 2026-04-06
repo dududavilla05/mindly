@@ -140,9 +140,9 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const bottomRef    = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ref espelha o state — evita closures obsoletas nos callbacks de save
-  const sessionIdRef = useRef<string | null>(null);
-  // Impede saves concorrentes que criariam sessões duplicadas
+  // Espelha o state — garante valor atual dentro de callbacks/closures
+  const sessionIdRef       = useRef<string | null>(null);
+  // Previne INSERT duplo: só um save com id=null pode rodar por vez
   const savingInProgressRef = useRef(false);
 
   const updateSessionId = useCallback((id: string | null) => {
@@ -150,13 +150,16 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     setSessionId(id);
   }, []);
 
-  // Load sessions on mount
+  // ── Carrega histórico ao montar ──
   useEffect(() => {
     setSessionsLoading(true);
     fetch("/api/idiomas/sessions")
       .then(r => r.json())
-      .then(d => setSessions(d.sessions ?? []))
-      .catch(() => {})
+      .then(d => {
+        console.log("[idiomas] sessões carregadas:", d.sessions?.length ?? 0);
+        setSessions(d.sessions ?? []);
+      })
+      .catch(err => console.error("[idiomas] erro ao carregar sessões:", err))
       .finally(() => setSessionsLoading(false));
   }, []);
 
@@ -168,45 +171,76 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     if (view === "chat") inputRef.current?.focus();
   }, [view]);
 
-  // Persiste a sessão — lê sessionIdRef.current para sempre ter o ID mais recente,
-  // independente do ciclo de re-render do React.
-  const persistSession = useCallback(async (msgs: Message[], lang: string, lvl: string) => {
-    if (msgs.length < 2) return; // aguarda pelo menos 1 troca completa
-    if (savingInProgressRef.current) return; // evita saves concorrentes
-    savingInProgressRef.current = true;
-    setSavingSession(true);
-    try {
-      const currentSid = sessionIdRef.current;
-      const body: Record<string, unknown> = { language: lang, level: lvl, messages: msgs };
-      if (currentSid) body.id = currentSid;
-      const res = await fetch("/api/idiomas/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Erro ao salvar");
-      if (data.id && data.id !== currentSid) {
-        // Nova sessão criada — atualiza ref+state e recarrega lista
-        updateSessionId(data.id);
-        const sr = await fetch("/api/idiomas/sessions");
-        const sd = await sr.json();
-        setSessions(sd.sessions ?? []);
-      } else if (currentSid) {
-        // Atualiza sessão existente na lista local (otimista)
-        setSessions(prev => prev.map(s =>
-          s.id === currentSid ? { ...s, messages: msgs, updated_at: new Date().toISOString() } : s
-        ));
-      }
-    } catch { /* silencioso — retry na próxima mensagem */ } finally {
-      savingInProgressRef.current = false;
-      setSavingSession(false);
+  // ── Lógica central de save (sem guard) ──
+  // Sempre usa sessionIdRef.current para evitar closures obsoletas.
+  const doSave = useCallback(async (msgs: Message[], lang: string, lvl: string) => {
+    if (msgs.length < 2) {
+      console.log("[idiomas:save] skip — menos de 2 mensagens");
+      return;
+    }
+    const currentSid = sessionIdRef.current;
+    const body: Record<string, unknown> = { language: lang, level: lvl, messages: msgs };
+    if (currentSid) body.id = currentSid;
+
+    console.log("[idiomas:save] POST → sessionId:", currentSid ?? "NEW", "| msgs:", msgs.length);
+
+    const res = await fetch("/api/idiomas/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("[idiomas:save] API error:", data.error, "| status:", res.status);
+      throw new Error(data.error ?? "Erro ao salvar sessão");
+    }
+
+    console.log("[idiomas:save] ok → id:", data.id);
+
+    if (data.id && data.id !== currentSid) {
+      // Nova sessão criada — sincroniza ref + state + lista
+      updateSessionId(data.id);
+      const sr = await fetch("/api/idiomas/sessions");
+      const sd = await sr.json();
+      setSessions(sd.sessions ?? []);
+    } else if (currentSid) {
+      // Atualiza optimisticamente a sessão na lista local
+      setSessions(prev => prev.map(s =>
+        s.id === currentSid ? { ...s, messages: msgs, updated_at: new Date().toISOString() } : s
+      ));
     }
   }, [updateSessionId]);
 
+  // ── Auto-save com guard anti-INSERT-duplo ──
+  // O guard só bloqueia se um save com id=null já está em andamento.
+  // Se id já existe, INSERTs duplos não são possíveis (UPDATE é idempotente).
+  const persistSession = useCallback(async (msgs: Message[], lang: string, lvl: string) => {
+    const isNewSession = !sessionIdRef.current;
+    if (isNewSession && savingInProgressRef.current) {
+      console.log("[idiomas:save] skip — INSERT já em andamento");
+      return;
+    }
+    if (isNewSession) savingInProgressRef.current = true;
+    setSavingSession(true);
+    try {
+      await doSave(msgs, lang, lvl);
+    } catch (err) {
+      console.error("[idiomas:save] persistSession error:", err);
+    } finally {
+      if (isNewSession) savingInProgressRef.current = false;
+      setSavingSession(false);
+    }
+  }, [doSave]);
+
+  // ── Debounce de 2s após cada resposta da IA ──
+  // Nula o ref após disparar para que handleEncerrar saiba que o timer já rodou.
   const scheduleAutoSave = useCallback((msgs: Message[], lang: string, lvl: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => persistSession(msgs, lang, lvl), 2000);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null; // timer disparou — limpa ref
+      persistSession(msgs, lang, lvl);
+    }, 2000);
   }, [persistSession]);
 
   const handleStart = async () => {
@@ -292,13 +326,16 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   };
 
   const handleEncerrar = () => {
-    // Cancela o timer pendente e salva imediatamente
+    // Cancela timer pendente
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    // Fire-and-forget: salva em background enquanto volta para seleção
-    persistSession(messages, selectedLanguage, selectedLevel);
+    // Usa doSave diretamente — bypass do guard (auto-save pode estar em andamento,
+    // mas UPDATE é idempotente; para novo INSERT, o guard já não bloqueia aqui).
+    // Fire-and-forget: salva em background enquanto navega para seleção.
+    doSave(messages, selectedLanguage, selectedLevel)
+      .catch(err => console.error("[idiomas:save] handleEncerrar error:", err));
     setView("select");
   };
 
