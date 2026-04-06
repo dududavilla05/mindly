@@ -72,25 +72,56 @@ function formatSessionDate(iso: string) {
 }
 
 const MarkdownComponents = {
-  p:          ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
+  p:          ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
   h1:         ({ children }: { children?: React.ReactNode }) => <h1 className="text-base font-bold text-white mb-2 mt-3 first:mt-0">{children}</h1>,
-  h2:         ({ children }: { children?: React.ReactNode }) => <h2 className="text-sm font-bold text-[#c39dff] mb-2 mt-3 first:mt-0">{children}</h2>,
-  h3:         ({ children }: { children?: React.ReactNode }) => <h3 className="text-sm font-semibold text-[#a78bfa] mb-1 mt-2 first:mt-0">{children}</h3>,
-  ul:         ({ children }: { children?: React.ReactNode }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-  ol:         ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
-  li:         ({ children }: { children?: React.ReactNode }) => <li className="text-[#d4c0f0]">{children}</li>,
-  strong:     ({ children }: { children?: React.ReactNode }) => <strong className="font-bold text-white">{children}</strong>,
+  h2:         ({ children }: { children?: React.ReactNode }) => <h2 className="text-sm font-bold text-[#c39dff] mb-1.5 mt-3 first:mt-0">{children}</h2>,
+  h3:         ({ children }: { children?: React.ReactNode }) => <h3 className="text-xs font-semibold text-[#a78bfa] uppercase tracking-wide mb-1 mt-2.5 first:mt-0">{children}</h3>,
+  ul:         ({ children }: { children?: React.ReactNode }) => <ul className="pl-3 mb-2 space-y-1.5">{children}</ul>,
+  ol:         ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal pl-4 mb-2 space-y-1.5">{children}</ol>,
+  li:         ({ children }: { children?: React.ReactNode }) => (
+    <li className="flex gap-2 text-[#d4c0f0]">
+      <span className="text-[#7c1fff] mt-1 shrink-0">–</span>
+      <span>{children}</span>
+    </li>
+  ),
+  strong:     ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold text-white">{children}</strong>,
   em:         ({ children }: { children?: React.ReactNode }) => <em className="italic text-[#c4b5fd]">{children}</em>,
-  blockquote: ({ children }: { children?: React.ReactNode }) => <blockquote className="pl-3 my-2 italic text-[#a78bfa]" style={{ borderLeft: "3px solid rgba(124,31,255,0.5)" }}>{children}</blockquote>,
-  a:          ({ href, children }: { href?: string; children?: React.ReactNode }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#a78bfa] underline hover:text-[#c4b5fd]">{children}</a>,
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="pl-3 py-1 my-2 italic text-[#a78bfa] text-sm" style={{ borderLeft: "2px solid rgba(124,31,255,0.5)", background: "rgba(124,31,255,0.06)", borderRadius: "0 8px 8px 0" }}>
+      {children}
+    </blockquote>
+  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) =>
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#a78bfa] underline underline-offset-2 hover:text-[#c4b5fd]">{children}</a>,
   code: ({ inline, children }: { inline?: boolean; children?: React.ReactNode }) =>
     inline ? (
-      <code className="px-1.5 py-0.5 rounded text-xs font-mono text-[#c39dff]" style={{ background: "rgba(124,31,255,0.2)" }}>{children}</code>
+      <code className="px-1.5 py-0.5 rounded text-xs font-mono text-[#c39dff]" style={{ background: "rgba(124,31,255,0.18)" }}>{children}</code>
     ) : (
-      <pre className="rounded-xl p-3 my-2 overflow-x-auto text-xs font-mono text-[#c39dff]" style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(124,31,255,0.2)" }}>
+      <pre className="rounded-xl p-3 my-2 overflow-x-auto text-xs font-mono text-[#c39dff]" style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(124,31,255,0.18)" }}>
         <code>{children}</code>
       </pre>
     ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="overflow-x-auto my-3 rounded-xl" style={{ border: "1px solid rgba(124,31,255,0.2)", background: "rgba(124,31,255,0.04)" }}>
+      <table className="w-full text-xs border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: { children?: React.ReactNode }) => (
+    <thead style={{ background: "rgba(124,31,255,0.12)" }}>{children}</thead>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="px-3 py-2 text-left text-xs font-semibold text-[#c39dff] whitespace-nowrap" style={{ borderBottom: "1px solid rgba(124,31,255,0.2)" }}>
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="px-3 py-2 text-[11px] text-[#d4c0f0] align-top" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      {children}
+    </td>
+  ),
+  tr: ({ children }: { children?: React.ReactNode }) => (
+    <tr className="transition-colors hover:bg-white/[0.02]">{children}</tr>
+  ),
 };
 
 export default function LanguageModule({ profile, onBack, onProfileUpdated }: LanguageModuleProps) {
@@ -106,9 +137,18 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [sessionId,        setSessionId]        = useState<string | null>(null);
   const [savingSession,    setSavingSession]    = useState(false);
 
-  const bottomRef  = useRef<HTMLDivElement>(null);
-  const inputRef   = useRef<HTMLTextAreaElement>(null);
+  const bottomRef    = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref espelha o state — evita closures obsoletas nos callbacks de save
+  const sessionIdRef = useRef<string | null>(null);
+  // Impede saves concorrentes que criariam sessões duplicadas
+  const savingInProgressRef = useRef(false);
+
+  const updateSessionId = useCallback((id: string | null) => {
+    sessionIdRef.current = id;
+    setSessionId(id);
+  }, []);
 
   // Load sessions on mount
   useEffect(() => {
@@ -128,39 +168,45 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     if (view === "chat") inputRef.current?.focus();
   }, [view]);
 
-  // Auto-save session 2s after messages change
-  const persistSession = useCallback(async (msgs: Message[], lang: string, lvl: string, sid: string | null) => {
-    if (msgs.length < 2) return; // só salva depois da primeira troca
+  // Persiste a sessão — lê sessionIdRef.current para sempre ter o ID mais recente,
+  // independente do ciclo de re-render do React.
+  const persistSession = useCallback(async (msgs: Message[], lang: string, lvl: string) => {
+    if (msgs.length < 2) return; // aguarda pelo menos 1 troca completa
+    if (savingInProgressRef.current) return; // evita saves concorrentes
+    savingInProgressRef.current = true;
     setSavingSession(true);
     try {
+      const currentSid = sessionIdRef.current;
       const body: Record<string, unknown> = { language: lang, level: lvl, messages: msgs };
-      if (sid) body.id = sid;
+      if (currentSid) body.id = currentSid;
       const res = await fetch("/api/idiomas/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (data.id && data.id !== sid) {
-        setSessionId(data.id);
-        // Refresh session list
+      if (!res.ok) throw new Error(data.error ?? "Erro ao salvar");
+      if (data.id && data.id !== currentSid) {
+        // Nova sessão criada — atualiza ref+state e recarrega lista
+        updateSessionId(data.id);
         const sr = await fetch("/api/idiomas/sessions");
         const sd = await sr.json();
         setSessions(sd.sessions ?? []);
-      } else if (sid) {
-        // Update in list
+      } else if (currentSid) {
+        // Atualiza sessão existente na lista local (otimista)
         setSessions(prev => prev.map(s =>
-          s.id === sid ? { ...s, messages: msgs, updated_at: new Date().toISOString() } : s
+          s.id === currentSid ? { ...s, messages: msgs, updated_at: new Date().toISOString() } : s
         ));
       }
-    } catch { /* silencioso */ } finally {
+    } catch { /* silencioso — retry na próxima mensagem */ } finally {
+      savingInProgressRef.current = false;
       setSavingSession(false);
     }
-  }, []);
+  }, [updateSessionId]);
 
-  const scheduleAutoSave = useCallback((msgs: Message[], lang: string, lvl: string, sid: string | null) => {
+  const scheduleAutoSave = useCallback((msgs: Message[], lang: string, lvl: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => persistSession(msgs, lang, lvl, sid), 2000);
+    saveTimerRef.current = setTimeout(() => persistSession(msgs, lang, lvl), 2000);
   }, [persistSession]);
 
   const handleStart = async () => {
@@ -178,11 +224,11 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     const lang = LANGUAGES.find(l => l.id === selectedLanguage);
     const greeting: Message = {
       role: "assistant",
-      content: `Olá! Sou seu professor de **${selectedLanguage}** ${lang?.flag ?? "🌍"}. Estou aqui para ajudar você a aprender no nível **${selectedLevel}**. Por onde quer começar? Pode me escrever em português ou já tentar em ${selectedLanguage}! 😊`,
+      content: `Olá! Sou seu professor de **${selectedLanguage}** ${lang?.flag ?? "🌍"}. Estou aqui para ajudar você a aprender no nível **${selectedLevel}**. Por onde quer começar? Pode me escrever em português ou já tentar em ${selectedLanguage}!`,
       ts: new Date().toISOString(),
     };
     setMessages([greeting]);
-    setSessionId(null);
+    updateSessionId(null);
     setView("chat");
   };
 
@@ -190,7 +236,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     setSelectedLanguage(session.language);
     setSelectedLevel(session.level);
     setMessages(session.messages);
-    setSessionId(session.id);
+    updateSessionId(session.id);
     setView("chat");
   };
 
@@ -202,9 +248,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    if (sessionId === id) {
-      setSessionId(null);
-    }
+    if (sessionIdRef.current === id) updateSessionId(null);
   };
 
   const sendMessage = async (text?: string) => {
@@ -233,7 +277,8 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       const reply: Message = { role: "assistant", content: data.reply, ts: new Date().toISOString() };
       const updated = [...history, reply];
       setMessages(updated);
-      scheduleAutoSave(updated, selectedLanguage, selectedLevel, sessionId);
+      // Usa scheduleAutoSave sem passar sessionId — lê do ref internamente
+      scheduleAutoSave(updated, selectedLanguage, selectedLevel);
     } catch {
       const errMsg: Message = { role: "assistant", content: "Desculpe, ocorreu um erro. Tente novamente.", ts: new Date().toISOString() };
       setMessages([...history, errMsg]);
@@ -247,10 +292,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   };
 
   const handleEncerrar = () => {
+    // Cancela o timer pendente e salva imediatamente
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
-      persistSession(messages, selectedLanguage, selectedLevel, sessionId);
+      saveTimerRef.current = null;
     }
+    // Fire-and-forget: salva em background enquanto volta para seleção
+    persistSession(messages, selectedLanguage, selectedLevel);
     setView("select");
   };
 
