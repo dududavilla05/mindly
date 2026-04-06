@@ -150,18 +150,27 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     setSessionId(id);
   }, []);
 
+  // ── Recarrega lista de sessões do banco ──
+  const refreshSessions = useCallback(async () => {
+    try {
+      const r = await fetch("/api/idiomas/sessions");
+      const d = await r.json();
+      if (d.error) {
+        console.error("[idiomas] refreshSessions API error:", d.error);
+        return;
+      }
+      console.log("[idiomas] sessões recarregadas:", d.sessions?.length ?? 0);
+      setSessions(d.sessions ?? []);
+    } catch (err) {
+      console.error("[idiomas] refreshSessions fetch error:", err);
+    }
+  }, []);
+
   // ── Carrega histórico ao montar ──
   useEffect(() => {
     setSessionsLoading(true);
-    fetch("/api/idiomas/sessions")
-      .then(r => r.json())
-      .then(d => {
-        console.log("[idiomas] sessões carregadas:", d.sessions?.length ?? 0);
-        setSessions(d.sessions ?? []);
-      })
-      .catch(err => console.error("[idiomas] erro ao carregar sessões:", err))
-      .finally(() => setSessionsLoading(false));
-  }, []);
+    refreshSessions().finally(() => setSessionsLoading(false));
+  }, [refreshSessions]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -173,10 +182,10 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
   // ── Lógica central de save (sem guard) ──
   // Sempre usa sessionIdRef.current para evitar closures obsoletas.
-  const doSave = useCallback(async (msgs: Message[], lang: string, lvl: string) => {
+  const doSave = useCallback(async (msgs: Message[], lang: string, lvl: string): Promise<boolean> => {
     if (msgs.length < 2) {
       console.log("[idiomas:save] skip — menos de 2 mensagens");
-      return;
+      return false;
     }
     const currentSid = sessionIdRef.current;
     const body: Record<string, unknown> = { language: lang, level: lvl, messages: msgs };
@@ -193,24 +202,19 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     if (!res.ok) {
       console.error("[idiomas:save] API error:", data.error, "| status:", res.status);
-      throw new Error(data.error ?? "Erro ao salvar sessão");
+      return false;
     }
 
     console.log("[idiomas:save] ok → id:", data.id);
 
     if (data.id && data.id !== currentSid) {
-      // Nova sessão criada — sincroniza ref + state + lista
+      // Nova sessão — sincroniza ref + state
       updateSessionId(data.id);
-      const sr = await fetch("/api/idiomas/sessions");
-      const sd = await sr.json();
-      setSessions(sd.sessions ?? []);
-    } else if (currentSid) {
-      // Atualiza optimisticamente a sessão na lista local
-      setSessions(prev => prev.map(s =>
-        s.id === currentSid ? { ...s, messages: msgs, updated_at: new Date().toISOString() } : s
-      ));
     }
-  }, [updateSessionId]);
+    // Sempre recarrega a lista após qualquer save bem-sucedido
+    await refreshSessions();
+    return true;
+  }, [updateSessionId, refreshSessions]);
 
   // ── Auto-save com guard anti-INSERT-duplo ──
   // O guard só bloqueia se um save com id=null já está em andamento.
@@ -227,11 +231,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       await doSave(msgs, lang, lvl);
     } catch (err) {
       console.error("[idiomas:save] persistSession error:", err);
+      // Mesmo com erro, tenta refresh para exibir sessões já existentes
+      refreshSessions();
     } finally {
       if (isNewSession) savingInProgressRef.current = false;
       setSavingSession(false);
     }
-  }, [doSave]);
+  }, [doSave, refreshSessions]);
 
   // ── Debounce de 2s após cada resposta da IA ──
   // Nula o ref após disparar para que handleEncerrar saiba que o timer já rodou.
@@ -326,17 +332,21 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   };
 
   const handleEncerrar = () => {
-    // Cancela timer pendente
+    // Cancela timer de auto-save pendente
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    // Usa doSave diretamente — bypass do guard (auto-save pode estar em andamento,
-    // mas UPDATE é idempotente; para novo INSERT, o guard já não bloqueia aqui).
-    // Fire-and-forget: salva em background enquanto navega para seleção.
-    doSave(messages, selectedLanguage, selectedLevel)
-      .catch(err => console.error("[idiomas:save] handleEncerrar error:", err));
+    // Navega imediatamente — o usuário vê a tela de seleção sem esperar
     setView("select");
+    // Salva em background e sempre recarrega o histórico ao final,
+    // mesmo que o save falhe (para mostrar sessões salvas anteriormente)
+    doSave(messages, selectedLanguage, selectedLevel)
+      .catch(err => console.error("[idiomas:save] handleEncerrar error:", err))
+      .finally(() => {
+        console.log("[idiomas] handleEncerrar: forçando refresh do histórico");
+        refreshSessions();
+      });
   };
 
   const lang = LANGUAGES.find(l => l.id === selectedLanguage);
