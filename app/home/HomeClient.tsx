@@ -191,28 +191,30 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar
-        history={history}
-        loading={historyLoading}
-        onSelectLesson={handleSelectHistoryLesson}
-        onDeleteLesson={handleDeleteLesson}
-        mindMaps={mindMaps}
-        mindMapsLoading={mindMapsLoading}
-        onSelectMindMap={handleSelectMindMap}
-        onDeleteMindMap={handleDeleteMindMap}
-        onNewMindMap={() => handleOpenMindMap()}
-        journeys={journeys}
-        journeysLoading={journeysLoading}
-        onSelectJourney={handleOpenJourney}
-        onDeleteJourney={handleDeleteJourney}
-        onNewJourney={() => handleOpenJourney()}
-        plan={profile?.plan}
-        activeTab={sidebarTab}
-        onTabChange={setSidebarTab}
-        mapsLimitReached={mapsLimitReached}
-        mapsLimit={mapsLimit}
-        mapsToday={mapsToday}
-      />
+      {screen !== "idiomas" && (
+        <Sidebar
+          history={history}
+          loading={historyLoading}
+          onSelectLesson={handleSelectHistoryLesson}
+          onDeleteLesson={handleDeleteLesson}
+          mindMaps={mindMaps}
+          mindMapsLoading={mindMapsLoading}
+          onSelectMindMap={handleSelectMindMap}
+          onDeleteMindMap={handleDeleteMindMap}
+          onNewMindMap={() => handleOpenMindMap()}
+          journeys={journeys}
+          journeysLoading={journeysLoading}
+          onSelectJourney={handleOpenJourney}
+          onDeleteJourney={handleDeleteJourney}
+          onNewJourney={() => handleOpenJourney()}
+          plan={profile?.plan}
+          activeTab={sidebarTab}
+          onTabChange={setSidebarTab}
+          mapsLimitReached={mapsLimitReached}
+          mapsLimit={mapsLimit}
+          mapsToday={mapsToday}
+        />
+      )}
 
       <main className="flex-1 min-w-0">
         {screen === "lesson" && currentLesson ? (
