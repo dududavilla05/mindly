@@ -26,6 +26,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [microsoftLoading, setMicrosoftLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
@@ -87,6 +88,21 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     if (error) {
       setError(translateError(error.message));
       setGoogleLoading(false);
+    }
+  };
+
+  const handleMicrosoftAuth = async () => {
+    setMicrosoftLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/home`,
+      },
+    });
+    if (error) {
+      setError(translateError(error.message));
+      setMicrosoftLoading(false);
     }
   };
 
@@ -214,6 +230,32 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
             </svg>
           )}
           Continuar com Google
+        </button>
+
+        {/* Microsoft */}
+        <button
+          onClick={handleMicrosoftAuth}
+          disabled={microsoftLoading || loading}
+          className="w-full py-3 rounded-xl flex items-center justify-center gap-3 text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+          style={{
+            background: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(255,255,255,0.12)",
+          }}
+        >
+          {microsoftLoading ? (
+            <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
+              <path d="M12 3a9 9 0 019 9" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 21 21">
+              <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+              <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+              <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+              <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+            </svg>
+          )}
+          Entrar com Microsoft
         </button>
 
         {/* Separador */}
