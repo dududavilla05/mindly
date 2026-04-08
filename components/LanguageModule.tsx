@@ -177,6 +177,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
   const [listening,     setListening]     = useState(false);
   const [sttSupported,  setSttSupported]  = useState(true);
+  const [sttError,      setSttError]      = useState<string | null>(null);
 
   const bottomRef        = useRef<HTMLDivElement>(null);
   const inputRef         = useRef<HTMLTextAreaElement>(null);
@@ -232,33 +233,101 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   }, []);
 
   // ── STT: reconhecimento de voz → input ──
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { setSttSupported(false); return; }
 
+    if (!SR) {
+      console.warn("[STT] SpeechRecognition não suportado neste browser");
+      setSttSupported(false);
+      return;
+    }
+
+    // Se já está escutando, para
     if (listening) {
+      console.log("[STT] stop chamado pelo usuário");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (recognitionRef.current as any)?.stop();
       return;
     }
 
+    setSttError(null);
+
+    // Solicita permissão explícita antes de iniciar — necessário em alguns browsers
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Para a stream imediatamente — só precisávamos da permissão
+      stream.getTracks().forEach(t => t.stop());
+      console.log("[STT] permissão de microfone concedida");
+    } catch (permErr) {
+      console.error("[STT] permissão negada:", permErr);
+      setSttError("Permissão de microfone negada. Habilite nas configurações do browser.");
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
-    recognition.lang = LANG_LOCALE[selectedLanguage] ?? "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.lang            = LANG_LOCALE[selectedLanguage] ?? "en-US";
+    recognition.continuous      = false;   // para após o primeiro resultado final
+    recognition.interimResults  = true;    // feedback em tempo real enquanto fala
+    recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => setListening(true);
-    recognition.onresult = (e: { results: { [x: string]: { [x: string]: { transcript: string } } } }) => {
-      const transcript = e.results[0][0].transcript;
-      setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+    console.log("[STT] iniciando — lang:", recognition.lang);
+
+    recognition.onstart = () => {
+      console.log("[STT] onstart — microfone ativo");
+      setListening(true);
     };
-    recognition.onend   = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+
+    recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
+      // Pega o melhor resultado final disponível
+      let transcript = "";
+      for (let i = e.results.length - 1; i >= 0; i--) {
+        if (e.results[i].isFinal) {
+          transcript = e.results[i][0].transcript;
+          break;
+        }
+      }
+      if (transcript) {
+        console.log("[STT] resultado final:", transcript);
+        setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+      }
+    };
+
+    recognition.onspeechend = () => {
+      console.log("[STT] onspeechend — fala detectada encerrada");
+    };
+
+    recognition.onend = () => {
+      console.log("[STT] onend — sessão encerrada");
+      setListening(false);
+    };
+
+    recognition.onerror = (e: { error: string; message?: string }) => {
+      console.error("[STT] onerror — tipo:", e.error, "| msg:", e.message ?? "(sem mensagem)");
+      setListening(false);
+
+      const MSG: Record<string, string> = {
+        "not-allowed":    "Microfone bloqueado. Habilite a permissão nas configurações do browser.",
+        "no-speech":      "Nenhuma fala detectada. Tente falar mais perto do microfone.",
+        "network":        "Erro de rede no reconhecimento de voz. Verifique sua conexão.",
+        "audio-capture":  "Nenhum microfone encontrado ou acessível.",
+        "service-not-allowed": "Serviço de voz não permitido. Tente em HTTPS ou outro browser.",
+        "aborted":        "",   // cancelado pelo usuário — sem mensagem
+      };
+      const msg = MSG[e.error] ?? `Erro no microfone: ${e.error}`;
+      if (msg) setSttError(msg);
+    };
 
     recognitionRef.current = recognition;
-    recognition.start();
+
+    try {
+      recognition.start();
+    } catch (startErr) {
+      console.error("[STT] recognition.start() lançou exceção:", startErr);
+      setListening(false);
+      setSttError("Não foi possível iniciar o microfone. Tente novamente.");
+    }
   }, [listening, selectedLanguage]);
 
   // ── Lógica central de save (sem guard) ──
@@ -802,11 +871,21 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                 paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
               }}
             >
-              {/* Aviso browser sem suporte a STT */}
+              {/* Aviso: browser sem suporte */}
               {!sttSupported && (
                 <p className="text-[11px] text-[#7a6a9a] mb-1.5 px-1">
-                  Seu browser não suporta reconhecimento de voz. Tente Chrome ou Edge.
+                  Reconhecimento de voz não suportado. Use Chrome ou Edge.
                 </p>
+              )}
+              {/* Erro de microfone — clique para dispensar */}
+              {sttError && (
+                <button
+                  onClick={() => setSttError(null)}
+                  className="w-full text-left text-[11px] mb-1.5 px-2 py-1 rounded-lg"
+                  style={{ background: "rgba(220,60,60,0.12)", border: "1px solid rgba(220,60,60,0.3)", color: "#f87171" }}
+                >
+                  {sttError}
+                </button>
               )}
               <div className="flex items-end gap-2 min-w-0 overflow-hidden w-full">
                 <textarea
@@ -814,13 +893,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={listening ? "Ouvindo..." : `Escreva em ${selectedLanguage}...`}
+                  placeholder={listening ? "Ouvindo... fale agora" : `Escreva em ${selectedLanguage}...`}
                   rows={1}
                   disabled={loading}
                   className="flex-1 min-w-0 resize-none rounded-xl px-3 py-3 text-sm text-white placeholder-[#4a3870] outline-none transition-all duration-200 disabled:opacity-50"
                   style={{
-                    background: listening ? "rgba(124,31,255,0.08)" : "rgba(255,255,255,0.05)",
-                    border: listening ? "1px solid rgba(220,60,60,0.6)" : "1px solid rgba(124,31,255,0.25)",
+                    background: listening ? "rgba(220,60,60,0.06)" : "rgba(255,255,255,0.05)",
+                    border: listening ? "1px solid rgba(220,60,60,0.5)" : "1px solid rgba(124,31,255,0.25)",
                     maxHeight: "120px",
                     lineHeight: "1.5",
                   }}
@@ -833,17 +912,12 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                   onClick={startListening}
                   disabled={loading}
                   title={listening ? "Parar gravação" : "Falar em vez de digitar"}
-                  className="flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  className={`flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${listening ? "animate-pulse" : ""}`}
                   style={{
                     width: "44px", height: "44px",
-                    background: listening
-                      ? "rgba(220,60,60,0.85)"
-                      : "rgba(124,31,255,0.15)",
-                    border: listening
-                      ? "1px solid rgba(220,60,60,0.6)"
-                      : "1px solid rgba(124,31,255,0.3)",
-                    boxShadow: listening ? "0 0 12px rgba(220,60,60,0.4)" : "none",
-                    animation: listening ? "pulse 1.2s infinite" : "none",
+                    background: listening ? "rgba(220,60,60,0.9)" : "rgba(124,31,255,0.15)",
+                    border: listening ? "1px solid rgba(220,60,60,0.7)" : "1px solid rgba(124,31,255,0.3)",
+                    boxShadow: listening ? "0 0 16px rgba(220,60,60,0.5)" : "none",
                   }}
                 >
                   {listening ? (
