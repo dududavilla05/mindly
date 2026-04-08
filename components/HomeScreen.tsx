@@ -460,12 +460,15 @@ export default function HomeScreen({
           }}
         >
           {/* Esquerda: Logo */}
-          <div className="flex items-center">
+          <div
+            className="flex items-center pr-6"
+            style={{ borderRight: "1px solid rgba(124,31,255,0.15)" }}
+          >
             <MindlyLogo size="sm" />
           </div>
 
           {/* Centro: botões de navegação */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-8">
             {/* Jornada */}
             {profile?.plan === "max" ? (
               <div className="relative group">
