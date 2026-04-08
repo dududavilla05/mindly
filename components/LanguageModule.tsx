@@ -398,11 +398,11 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const lang = LANGUAGES.find(l => l.id === selectedLanguage);
 
   return (
-    <div className="h-[100dvh] flex flex-col" style={{ background: "rgba(15,10,30,1)" }}>
+    <div className="h-[100dvh] flex flex-col overflow-x-hidden max-w-[100vw] box-border" style={{ background: "rgba(15,10,30,1)" }}>
 
       {/* ── Header ── */}
       <div
-        className="shrink-0 flex items-center gap-2 px-3 md:px-5 border-b"
+        className="shrink-0 flex items-center gap-2 px-3 md:px-5 border-b overflow-x-hidden max-w-[100vw]"
         style={{ height: "56px", background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(16px)" }}
       >
         {/* Botão voltar — 44px min para iOS HIG */}
@@ -432,7 +432,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Indicador de salvamento — apenas desktop */}
           {view === "chat" && savingSession && (
             <span className="text-[10px] text-[#5a4870] hidden md:block">salvando...</span>
@@ -457,20 +457,19 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
             <button
               onClick={handleNovaConversa}
               className="flex items-center gap-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 shrink-0"
-              style={{ height: "44px", padding: "0 12px", background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+              style={{ height: "44px", padding: "0 10px", background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
               title="Nova conversa"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              <span className="hidden sm:block">Nova conversa</span>
-              <span className="sm:hidden">Nova</span>
+              <span className="hidden sm:inline">Nova</span>
             </button>
           )}
 
           {/* Badge Max */}
           <div
-            className="px-2.5 py-1 rounded-full text-xs font-semibold shrink-0"
+            className="px-2 py-1 rounded-full text-xs font-semibold shrink-0"
             style={{ background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.3))", border: "1px solid rgba(124,31,255,0.4)", color: "#c39dff" }}
           >
             Max
@@ -612,7 +611,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-1 max-w-[78%]">
+                  <div className="flex flex-col gap-1" style={{ maxWidth: "calc(100% - 60px)" }}>
                     <div
                       className="px-4 py-3 text-sm leading-relaxed"
                       style={msg.role === "user"
@@ -702,17 +701,17 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               Encerrar aula
             </button>
 
-            {/* Quick actions — scroll horizontal no mobile, wrap no desktop */}
+            {/* Quick actions — flex-wrap para quebrar linha no mobile */}
             <div
-              className="px-3 pt-2 pb-1.5 flex gap-2 border-t shrink-0 overflow-x-auto"
-              style={{ borderColor: "rgba(124,31,255,0.15)", scrollbarWidth: "none" }}
+              className="px-3 pt-2 pb-1.5 flex flex-wrap gap-2 border-t shrink-0"
+              style={{ borderColor: "rgba(124,31,255,0.15)" }}
             >
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
                   onClick={() => sendMessage(action.label)}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-medium transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-medium transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ height: "36px", background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)", color: "#c39dff" }}
                 >
                   <span>{action.emoji}</span>
@@ -721,15 +720,15 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               ))}
             </div>
 
-            {/* Input — min-w-0 e overflow-hidden evitam overflow horizontal */}
+            {/* Input — contido dentro da tela */}
             <div
-              className="px-3 pb-3 pt-2 border-t shrink-0"
+              className="px-3 pb-3 pt-2 border-t shrink-0 box-border w-full"
               style={{
                 borderColor: "rgba(124,31,255,0.2)",
                 paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
               }}
             >
-              <div className="flex items-end gap-2 min-w-0 overflow-hidden">
+              <div className="flex items-end gap-2 min-w-0 overflow-hidden w-full">
                 <textarea
                   ref={inputRef}
                   value={input}
