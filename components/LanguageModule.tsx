@@ -934,26 +934,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               <div ref={bottomRef} />
             </div>
 
-            {/* ── Botão flutuante "Encerrar aula" — todas as telas ── */}
-            <button
-              onClick={handleEncerrar}
-              className="flex absolute z-10 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105 active:scale-95"
-              style={{
-                bottom: "132px",
-                right: "16px",
-                background: "rgba(15,10,30,0.95)",
-                border: "1px solid rgba(124,31,255,0.35)",
-                backdropFilter: "blur(12px)",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-              Encerrar aula
-            </button>
-
-            {/* Quick actions — flex-wrap para quebrar linha no mobile */}
+            {/* Quick actions + Encerrar aula — flex-wrap, sem posicionamento absoluto */}
             <div
               className="px-3 pt-2 pb-1.5 flex flex-wrap gap-2 border-t shrink-0"
               style={{ borderColor: "rgba(124,31,255,0.15)" }}
@@ -970,6 +951,17 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                   {action.label}
                 </button>
               ))}
+              {/* Encerrar aula — último da linha, sem posição absoluta */}
+              <button
+                onClick={handleEncerrar}
+                className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold transition-all duration-150 active:scale-95"
+                style={{ height: "36px", background: "rgba(124,31,255,0.08)", border: "1px solid rgba(124,31,255,0.3)", color: "#a78bca" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Encerrar aula
+              </button>
             </div>
 
             {/* Input — contido dentro da tela */}
