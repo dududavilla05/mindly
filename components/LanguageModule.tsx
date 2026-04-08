@@ -681,11 +681,10 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               <div ref={bottomRef} />
             </div>
 
-            {/* ── Botão flutuante "Encerrar aula" — apenas desktop (sm+) ──
-                No mobile o botão de voltar no header cumpre esta função */}
+            {/* ── Botão flutuante "Encerrar aula" — todas as telas ── */}
             <button
               onClick={handleEncerrar}
-              className="hidden sm:flex absolute z-10 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105 active:scale-95"
+              className="flex absolute z-10 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105 active:scale-95"
               style={{
                 bottom: "132px",
                 right: "16px",
