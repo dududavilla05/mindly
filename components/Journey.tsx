@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { LessonContent } from "@/types/lesson";
 import type { SupabaseClientType } from "@/lib/supabase/client";
 import type { JourneyLesson, JourneyItem } from "@/hooks/useJourneys";
@@ -21,6 +21,7 @@ interface JourneyState {
 interface JourneyProps {
   plan?: string | null;
   userId?: string;
+  userName?: string;
   supabase?: SupabaseClientType | null;
   onBack: () => void;
   initialJourney?: JourneyItem | null;
@@ -54,9 +55,10 @@ function calcStreak(completedList: number[], totalDays: number): number {
 }
 
 export default function Journey({
-  plan, userId, supabase, onBack, initialJourney, journeyId, onJourneyCreated, onLessonGenerated, onSaved,
+  plan, userId, userName, supabase, onBack, initialJourney, journeyId, onJourneyCreated, onLessonGenerated, onSaved,
 }: JourneyProps) {
   const isMax = plan === "max";
+  const isPro = plan === "pro" || plan === "max";
 
   const [phase, setPhase] = useState<"form" | "loading" | "plan">(
     initialJourney ? "plan" : "form"
@@ -65,18 +67,24 @@ export default function Journey({
   const [durationDays, setDurationDays] = useState<7 | 15 | 30>(
     (initialJourney?.duration_days as 7 | 15 | 30) ?? 7
   );
-  const [journey, setJourney] = useState<JourneyState | null>(
-    initialJourney ? {
+  const [journey, setJourney] = useState<JourneyState | null>(() => {
+    if (!initialJourney) return null;
+    const list = initialJourney.completed_day_list ?? [];
+    console.log("[Journey] init id=%s completed_day_list=%d/%d",
+      initialJourney.id, list.length, initialJourney.duration_days);
+    return {
       ...initialJourney,
-      completed_day_list: initialJourney.completed_day_list ?? [],
-      completed_days: initialJourney.completed_days ?? 0,
+      completed_day_list: list,
+      completed_days: list.length,  // always derived from list
       streak: initialJourney.streak ?? 0,
-    } : null
-  );
+    };
+  });
   const [error, setError] = useState("");
   const [saveWarning, setSaveWarning] = useState("");
   const [loadingLessonDay, setLoadingLessonDay] = useState<number | null>(null);
   const [celebratingDay, setCelebratingDay] = useState<number | null>(null);
+  const [showCongratsModal, setShowCongratsModal] = useState(false);
+  const [certDownloading, setCertDownloading] = useState(false);
 
   // Reload fresh data from Supabase when returning to an existing journey
   useEffect(() => {
@@ -88,13 +96,16 @@ export default function Journey({
       .single()
       .then(({ data, error }) => {
         if (data && !error) {
+          const list = data.completed_day_list ?? [];
+          console.log("[Journey] loaded id=%s completed_day_list=%d/%d completed_days=%d",
+            data.id, list.length, data.duration_days, data.completed_days);
           setJourney({
             id: data.id,
             title: data.title,
             objective: data.objective,
             duration_days: data.duration_days,
             lessons: data.lessons,
-            completed_day_list: data.completed_day_list ?? [],
+            completed_day_list: list,
             completed_days: data.completed_days ?? 0,
             streak: data.streak ?? 0,
           });
@@ -103,10 +114,26 @@ export default function Journey({
       });
   }, [journeyId, supabase]);
 
-  const progress = journey
-    ? Math.round((journey.completed_days / journey.duration_days) * 100)
-    : 0;
+  // Use completed_day_list.length as source of truth (completed_days integer can be stale)
+  const completedCount = journey?.completed_day_list.length ?? 0;
+  const totalDays = journey?.duration_days ?? 0;
+  const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
   const streak = journey ? calcStreak(journey.completed_day_list, journey.duration_days) : 0;
+  const isComplete = journey !== null && totalDays > 0 && completedCount >= totalDays;
+
+  useEffect(() => {
+    if (!journey || !isComplete) return;
+    const storageKey = `mindly_cert_seen_${journey.id ?? "new"}`;
+    console.log("[Journey] isComplete=true id=%s storageKey=%s completedCount=%d totalDays=%d",
+      journey.id, storageKey, completedCount, totalDays);
+    try {
+      if (typeof window !== "undefined" && !localStorage.getItem(storageKey)) {
+        localStorage.setItem(storageKey, "1");
+        setShowCongratsModal(true);
+      }
+    } catch { /* SSR */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComplete, journey?.id]);
 
   const handleCreate = useCallback(async () => {
     if (!objective.trim()) return;
@@ -264,6 +291,116 @@ export default function Journey({
     setSaveWarning("");
   };
 
+  const handleDownloadCertificate = async () => {
+    if (!journey) return;
+    setCertDownloading(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const W = 297;
+      const H = 210;
+
+      // Background
+      doc.setFillColor(15, 10, 30);
+      doc.rect(0, 0, W, H, "F");
+
+      // Outer purple border
+      doc.setDrawColor(124, 31, 255);
+      doc.setLineWidth(1.5);
+      doc.rect(8, 8, W - 16, H - 16);
+
+      // Inner lighter border
+      doc.setDrawColor(166, 106, 255);
+      doc.setLineWidth(0.4);
+      doc.rect(12, 12, W - 24, H - 24);
+
+      // Corner decorations
+      doc.setFillColor(124, 31, 255);
+      [[8, 8], [W - 8, 8], [8, H - 8], [W - 8, H - 8]].forEach(([cx, cy]) => {
+        doc.rect(cx - 4, cy - 4, 8, 8, "F");
+      });
+
+      // Brand header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(195, 157, 255);
+      doc.text("* MINDLY *", W / 2, 30, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(122, 106, 154);
+      doc.text("Plataforma de Aprendizado com Inteligencia Artificial", W / 2, 38, { align: "center" });
+
+      // Divider
+      doc.setDrawColor(124, 31, 255);
+      doc.setLineWidth(0.3);
+      doc.line(50, 43, W - 50, 43);
+
+      // Certificate title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Certificado de Conclusao", W / 2, 60, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(167, 139, 202);
+      doc.text("Este certificado confirma que", W / 2, 72, { align: "center" });
+
+      // User name
+      const displayName = userName?.trim() || "Estudante Mindly";
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(26);
+      doc.setTextColor(195, 157, 255);
+      doc.text(displayName, W / 2, 88, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(167, 139, 202);
+      doc.text("concluiu com exito a Jornada de Aprendizado", W / 2, 100, { align: "center" });
+
+      // Journey title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.setTextColor(255, 255, 255);
+      doc.text(journey.title, W / 2, 113, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(122, 106, 154);
+      doc.text(`${journey.duration_days} dias - ${journey.duration_days} licoes concluidas`, W / 2, 122, { align: "center" });
+
+      // Divider
+      doc.setDrawColor(80, 40, 120);
+      doc.setLineWidth(0.3);
+      doc.line(50, 130, W - 50, 130);
+
+      // Issue date
+      const dateStr = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(80, 60, 110);
+      doc.text(`Emitido em ${dateStr}`, W / 2, 140, { align: "center" });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(60, 30, 90);
+      doc.text("* * *", W / 2, 155, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(50, 30, 80);
+      doc.text("mindly.app", W / 2, 163, { align: "center" });
+
+      const safeTitle = journey.title.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 40);
+      doc.save(`certificado_${safeTitle}.pdf`);
+    } catch (e) {
+      console.error("[Certificate] Erro ao gerar PDF:", e);
+    } finally {
+      setCertDownloading(false);
+    }
+  };
+
   /* ── Upsell ── */
   if (!isMax) {
     return (
@@ -379,10 +516,70 @@ export default function Journey({
   }
 
   /* ── Plano ── */
-  const isComplete = progress === 100;
-
   return (
     <div className="flex flex-col min-h-screen" style={{ background: "#0f0a1e" }}>
+
+      {/* Congrats Modal */}
+      {showCongratsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowCongratsModal(false); }}>
+          <div className="w-full max-w-sm rounded-3xl p-6 sm:p-8 flex flex-col items-center gap-5 text-center"
+            style={{ background: "linear-gradient(135deg, #110a28, #0d0820)", border: "2px solid rgba(124,31,255,0.5)", boxShadow: "0 0 80px rgba(124,31,255,0.3)" }}>
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl"
+              style={{ background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.2))", border: "1px solid rgba(124,31,255,0.5)", boxShadow: "0 0 30px rgba(124,31,255,0.3)" }}>
+              🏆
+            </div>
+            <div className="flex flex-col gap-2">
+              <h2 className="text-2xl font-black text-white">Jornada Concluída!</h2>
+              <p className="text-[#a78bca] text-sm leading-relaxed">
+                Parabéns! Você completou <strong className="text-white">{journey?.title}</strong> — {journey?.duration_days} dias de aprendizado dedicado.
+              </p>
+            </div>
+            <div className="w-full grid grid-cols-2 gap-3">
+              {[
+                { label: "Dias Concluídos", value: journey?.duration_days ?? 0, color: "#4ade80" },
+                { label: "Progresso Final", value: "100%", color: "#c39dff" },
+              ].map(s => (
+                <div key={s.label} className="rounded-2xl p-3"
+                  style={{ background: "rgba(124,31,255,0.1)", border: "1px solid rgba(124,31,255,0.2)" }}>
+                  <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
+                  <p className="text-[10px] text-[#5c3d8a] uppercase tracking-wider mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            {isPro ? (
+              <button onClick={handleDownloadCertificate} disabled={certDownloading}
+                className="w-full py-4 rounded-2xl font-bold text-base text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)", boxShadow: "0 4px 20px rgba(124,31,255,0.4)" }}>
+                {certDownloading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" />
+                    </svg>
+                    Gerando certificado...
+                  </span>
+                ) : "📜 Baixar Certificado PDF"}
+              </button>
+            ) : (
+              <div className="w-full flex flex-col gap-2">
+                <div className="w-full py-3 rounded-2xl text-sm text-center opacity-50 cursor-not-allowed"
+                  style={{ background: "rgba(124,31,255,0.15)", border: "1px solid rgba(124,31,255,0.25)", color: "#c39dff" }}>
+                  🔒 Certificado disponível no plano Pro/Max
+                </div>
+                <a href="/planos" className="text-xs text-[#7c1fff] hover:text-[#c39dff] transition-colors">
+                  Fazer upgrade → Ver planos
+                </a>
+              </div>
+            )}
+            <button onClick={() => setShowCongratsModal(false)}
+              className="text-sm text-[#5c3d8a] hover:text-[#a78bca] transition-colors">
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0 sticky top-0 z-10"
         style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}>
         <button onClick={onBack} className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors shrink-0"
@@ -457,6 +654,41 @@ export default function Journey({
                 </span>
               </div>
             </div>
+
+            {isComplete && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCongratsModal(true)}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(124,31,255,0.25), rgba(166,106,255,0.15))",
+                    border: "1px solid rgba(124,31,255,0.45)",
+                    color: "#c39dff",
+                  }}>
+                  🏆 Ver Conquista
+                </button>
+                {isPro && (
+                  <button
+                    onClick={handleDownloadCertificate}
+                    disabled={certDownloading}
+                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(124,31,255,0.35), rgba(166,106,255,0.25))",
+                      border: "1px solid rgba(124,31,255,0.6)",
+                      color: "#e2d9f5",
+                    }}>
+                    {certDownloading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" />
+                        </svg>
+                        Gerando...
+                      </span>
+                    ) : "📜 Certificado"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

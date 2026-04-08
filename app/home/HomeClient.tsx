@@ -257,6 +257,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             key={journeyKey}
             plan={profile?.plan}
             userId={user?.id}
+            userName={user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? undefined}
             supabase={supabase}
             onBack={handleBack}
             initialJourney={currentJourney}
