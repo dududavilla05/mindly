@@ -11,6 +11,7 @@ export interface UserProfile {
   last_map_date?: string | null;
   language_learning?: string | null;
   language_level?: string | null;
+  onboarding_completed?: boolean;
 }
 
 export default async function RootPage() {

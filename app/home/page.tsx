@@ -18,7 +18,7 @@ export default async function HomePage() {
   let profile: UserProfile | null = null;
   const { data } = await supabase
     .from("profiles")
-    .select("plan, lessons_today, last_lesson_date, streak_days, maps_today, last_map_date")
+    .select("plan, lessons_today, last_lesson_date, streak_days, maps_today, last_map_date, onboarding_completed")
     .eq("id", user.id)
     .single();
 
@@ -31,6 +31,7 @@ export default async function HomePage() {
       streak_days: data.streak_days ?? 0,
       maps_today: data.maps_today ?? 0,
       last_map_date: data.last_map_date ?? null,
+      onboarding_completed: data.onboarding_completed ?? false,
     };
   }
 

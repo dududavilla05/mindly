@@ -9,6 +9,7 @@ import LessonScreen from "@/components/LessonScreen";
 import MindMap from "@/components/MindMap";
 import Journey from "@/components/Journey";
 import LanguageModule from "@/components/LanguageModule";
+import OnboardingModal from "@/components/OnboardingModal";
 import Sidebar from "@/components/Sidebar";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import { useHistory } from "@/hooks/useHistory";
@@ -45,6 +46,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   const [returnScreen, setReturnScreen] = useState<AppScreen>("home");
   const [journeyContext, setJourneyContext] = useState<{ day: number; journeyTitle: string; totalDays: number } | null>(null);
   const [lessonFromJourney, setLessonFromJourney] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => initialProfile?.onboarding_completed === false);
 
   const [supabase, setSupabase] = useState<SupabaseClientType | null>(null);
   useEffect(() => { setSupabase(createClient()); }, []);
@@ -276,6 +278,23 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
           />
         )}
       </main>
+
+      {showOnboarding && (
+        <OnboardingModal
+          onComplete={async () => {
+            setShowOnboarding(false);
+            await fetch("/api/profile", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ onboarding_completed: true }),
+            }).catch(() => {});
+            refreshProfile();
+          }}
+          onViewPlans={() => {
+            // Placeholder — pode abrir modal de planos no futuro
+          }}
+        />
+      )}
 
       <HistoryDrawer
         open={drawerOpen}

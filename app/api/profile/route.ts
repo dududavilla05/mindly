@@ -11,8 +11,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const allowed = ["language_learning", "language_level"];
-    const updates: Record<string, string> = {};
+    const allowed = ["language_learning", "language_level", "onboarding_completed"];
+    const updates: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) updates[key] = body[key];
     }
