@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import GeneratingOverlay from "./GeneratingOverlay";
+import FirstTimeModal from "./FirstTimeModal";
 import { createClient } from "@/lib/supabase/client";
 import type { UserProfile } from "@/app/page";
 
@@ -152,6 +153,13 @@ export default function ChallengeMode({ onBack }: ChallengeModeProps) {
   if (quizScreen === "setup") {
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "#0f0a1e", color: "#e8e0f0" }}>
+        <FirstTimeModal
+          storageKey="mindly_seen_challenge"
+          icon="🎯"
+          title="Modo Desafio"
+          description="Teste seus conhecimentos com quizzes gerados por IA. Escolha qualquer tema, defina a dificuldade e veja sua pontuação final."
+          buttonText="Aceitar desafio!"
+        />
         <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
           <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-15"
             style={{ background: "radial-gradient(circle, #7c1fff 0%, transparent 65%)", filter: "blur(80px)" }} />

@@ -632,6 +632,9 @@ export default function HomeScreen({
             <label className="text-sm font-semibold text-[#c39dff] uppercase tracking-widest">
               Qual é sua curiosidade hoje?
             </label>
+            <p className="text-xs text-[#7a6a9a]">
+              ✨ Digite qualquer tema e a IA gera uma lição completa personalizada para você
+            </p>
             {!micSupported && (
               <p className="text-xs text-[#7a6a9a]">Reconhecimento de voz não suportado. Use Chrome ou Edge.</p>
             )}

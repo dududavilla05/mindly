@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import MindMapViewer from "./MindMapViewer";
 import GeneratingOverlay from "./GeneratingOverlay";
+import FirstTimeModal from "./FirstTimeModal";
 
 export interface MindMapNode {
   id: string;
@@ -219,6 +220,13 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
 
   return (
     <div className="relative flex flex-col h-screen" style={{ background: "#0f0a1e" }}>
+      <FirstTimeModal
+        storageKey="mindly_seen_mindmap"
+        icon="🧠"
+        title="Mapa Mental com IA"
+        description="Transforme qualquer tema em um mapa visual interativo. Clique nos nós para expandir e explorar conexões infinitas."
+        buttonText="Entendi, vamos lá!"
+      />
       {/* Header */}
       <header
         className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0 z-10"

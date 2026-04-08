@@ -5,6 +5,7 @@ import type { LessonContent } from "@/types/lesson";
 import type { SupabaseClientType } from "@/lib/supabase/client";
 import type { JourneyLesson, JourneyItem } from "@/hooks/useJourneys";
 import GeneratingOverlay from "./GeneratingOverlay";
+import FirstTimeModal from "./FirstTimeModal";
 
 interface JourneyState {
   id?: string;
@@ -290,6 +291,13 @@ export default function Journey({
   if (phase === "form") {
     return (
       <div className="flex flex-col min-h-screen" style={{ background: "#0f0a1e" }}>
+        <FirstTimeModal
+          storageKey="mindly_seen_journey"
+          icon="🗺️"
+          title="Jornada de Aprendizado"
+          description="Crie um plano de estudos de 7, 15 ou 30 dias. A IA gera lições progressivas que se aprofundam no seu ritmo, com streak e progresso."
+          buttonText="Criar minha jornada!"
+        />
         <header className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0"
           style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}>
           <button onClick={onBack} className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors"
