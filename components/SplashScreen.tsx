@@ -119,14 +119,9 @@ export default function SplashScreen() {
           to { opacity: 1; transform: scale(1); }
         }
 
-        /* Logo */
+        /* Logo — tamanhos controlados via style inline no elemento */
         .sp-logo {
-          width: 72px;
-          height: 72px;
           object-fit: contain;
-        }
-        @media (min-width: 768px) {
-          .sp-logo { width: 120px; height: 120px; }
         }
 
         /* Título com gradiente de texto */
@@ -190,7 +185,15 @@ export default function SplashScreen() {
 
         <div className="sp-content">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/logo-final.png" alt="Mindly" className="sp-logo" />
+          <img
+            src="/icons/logo-final.png"
+            alt="Mindly"
+            className="sp-logo"
+            style={{
+              width:  typeof window !== "undefined" && window.innerWidth >= 768 ? "140px" : "88px",
+              height: typeof window !== "undefined" && window.innerWidth >= 768 ? "140px" : "88px",
+            }}
+          />
           <span className="sp-title">Mindly</span>
           <p className="sp-tagline">Aprenda com inteligência</p>
         </div>
