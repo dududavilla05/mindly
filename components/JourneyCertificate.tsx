@@ -94,10 +94,10 @@ const JourneyCertificate = React.forwardRef<HTMLDivElement, CertProps>(
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/icons/logo-final.png"
-            width={56}
-            height={56}
+            width={80}
+            height={80}
             alt="Mindly"
-            style={{ display: "block", marginBottom: "18px" }}
+            style={{ display: "block", marginBottom: "16px" }}
           />
 
           {/* Title — two-tone blue → purple (html2canvas-safe) */}
