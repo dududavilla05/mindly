@@ -107,7 +107,7 @@ PEDAGOGIA: Adapte vocabulário e gramática ao nível ${level}. Proponha exercí
       max_tokens: 1000,
       system: systemPrompt,
       messages: [
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        ...messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: userMessage },
       ],
     });

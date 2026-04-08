@@ -60,7 +60,7 @@ ${lesson.curiosity ? `Curiosidade: ${lesson.curiosity}` : ""}
       max_tokens: 800,
       system: `Você é o Mentor do Mindly, um professor especialista e paciente. O usuário acabou de aprender sobre este tema:\n\n${lessonSummary}\n\nResponda as dúvidas de forma clara, didática e encorajadora. Use exemplos práticos do cotidiano brasileiro. Seja conciso — respostas curtas e diretas são mais eficazes.`,
       messages: [
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        ...messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: userMessage },
       ],
     });

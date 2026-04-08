@@ -72,6 +72,8 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
 
   const handleNodeClick = useCallback(async (node: MindMapNode) => {
     if (expandingId) return;
+    // Se o nó já tem filhos, não chamar a API novamente
+    if (nodes.some(n => n.parentId === node.id)) return;
     setExpandingId(node.id);
     setError("");
     try {

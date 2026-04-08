@@ -28,19 +28,33 @@ export async function POST(request: NextRequest) {
     const lastDate = profile?.last_map_date ?? null;
     const mapsToday = lastDate === today ? (profile?.maps_today ?? 0) : 0;
 
-    // Só verifica e incrementa limite para geração de novo mapa (não para expansão ou explicação)
-    if (isNewMap && plan !== "max") {
-      const limit = LIMITS[plan] ?? 3;
-      if (mapsToday >= limit) {
-        return NextResponse.json(
-          { error: `Limite de ${limit} mapas por dia atingido. Faça upgrade para continuar.` },
-          { status: 403 }
-        );
+    // Para novo mapa: verificar cache antes de chamar a API
+    if (isNewMap) {
+      const { data: cachedMap } = await adminSupabase
+        .from("mind_maps")
+        .select("nodes, edges")
+        .eq("user_id", user.id)
+        .ilike("topic", topic.trim())
+        .maybeSingle();
+
+      if (cachedMap?.nodes && cachedMap?.edges) {
+        return NextResponse.json({ nodes: cachedMap.nodes, edges: cachedMap.edges });
       }
-      await adminSupabase.from("profiles").update({
-        maps_today: mapsToday + 1,
-        last_map_date: today,
-      }).eq("id", user.id);
+
+      // Cache miss: verificar e incrementar limite para não-max
+      if (plan !== "max") {
+        const limit = LIMITS[plan] ?? 3;
+        if (mapsToday >= limit) {
+          return NextResponse.json(
+            { error: `Limite de ${limit} mapas por dia atingido. Faça upgrade para continuar.` },
+            { status: 403 }
+          );
+        }
+        await adminSupabase.from("profiles").update({
+          maps_today: mapsToday + 1,
+          last_map_date: today,
+        }).eq("id", user.id);
+      }
     }
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
