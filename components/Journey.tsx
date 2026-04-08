@@ -6,6 +6,7 @@ import type { SupabaseClientType } from "@/lib/supabase/client";
 import type { JourneyLesson, JourneyItem } from "@/hooks/useJourneys";
 import GeneratingOverlay from "./GeneratingOverlay";
 import FirstTimeModal from "./FirstTimeModal";
+import JourneyCertificate from "./JourneyCertificate";
 
 interface JourneyState {
   id?: string;
@@ -85,6 +86,7 @@ export default function Journey({
   const [celebratingDay, setCelebratingDay] = useState<number | null>(null);
   const [showCongratsModal, setShowCongratsModal] = useState(false);
   const [certDownloading, setCertDownloading] = useState(false);
+  const certRef = useRef<HTMLDivElement>(null);
 
   // Reload fresh data from Supabase when returning to an existing journey
   useEffect(() => {
@@ -292,224 +294,31 @@ export default function Journey({
   };
 
   const handleDownloadCertificate = async () => {
-    if (!journey) return;
+    if (!journey || !certRef.current) return;
     setCertDownloading(true);
     try {
-      // Wait for fonts so text renders correctly
-      await document.fonts.ready;
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
 
-      // Scale: S px = 1 mm → canvas is A4 landscape at ~254 dpi
-      const S = 10;
-      const CW = 297 * S;
-      const CH = 210 * S;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = CW;
-      canvas.height = CH;
-      const ctx = canvas.getContext("2d")!;
-
-      // ── Background ──────────────────────────────────────────────────
-      ctx.fillStyle = "#0f0a1e";
-      ctx.fillRect(0, 0, CW, CH);
-
-      // Top purple fade band
-      {
-        const g = ctx.createLinearGradient(0, 0, 0, 18 * S);
-        g.addColorStop(0, "rgba(124,31,255,0.55)");
-        g.addColorStop(1, "rgba(124,31,255,0)");
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, CW, 18 * S);
-      }
-      // Bottom purple fade band
-      {
-        const g = ctx.createLinearGradient(0, CH - 18 * S, 0, CH);
-        g.addColorStop(0, "rgba(124,31,255,0)");
-        g.addColorStop(1, "rgba(124,31,255,0.45)");
-        ctx.fillStyle = g;
-        ctx.fillRect(0, CH - 18 * S, CW, 18 * S);
-      }
-
-      // ── Double border ────────────────────────────────────────────────
-      ctx.strokeStyle = "#7c1fff";
-      ctx.lineWidth = 12;
-      ctx.strokeRect(8 * S, 8 * S, CW - 16 * S, CH - 16 * S);
-
-      ctx.strokeStyle = "rgba(166,106,255,0.45)";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(11.5 * S, 11.5 * S, CW - 23 * S, CH - 23 * S);
-
-      // ── Corner L-ornaments ───────────────────────────────────────────
-      const CLEN = 20 * S;
-      const CINS = 8 * S;
-      const DIAMOND = 1.5 * S;
-      const corners: Array<[number, number, number, number]> = [
-        [CINS, CINS, 1, 1],
-        [CW - CINS, CINS, -1, 1],
-        [CINS, CH - CINS, 1, -1],
-        [CW - CINS, CH - CINS, -1, -1],
-      ];
-      corners.forEach(([cx, cy, dx, dy]) => {
-        ctx.strokeStyle = "#c39dff";
-        ctx.lineWidth = 10;
-        ctx.lineCap = "square";
-        ctx.beginPath();
-        ctx.moveTo(cx + dx * CLEN, cy);
-        ctx.lineTo(cx, cy);
-        ctx.lineTo(cx, cy + dy * CLEN);
-        ctx.stroke();
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(Math.PI / 4);
-        ctx.fillStyle = "#7c1fff";
-        ctx.fillRect(-DIAMOND / 2, -DIAMOND / 2, DIAMOND, DIAMOND);
-        ctx.restore();
+      // Capture the off-screen certificate component.
+      // onclone moves the element to (0,0) in the cloned doc so html2canvas
+      // renders it correctly regardless of its off-screen position.
+      const canvas = await html2canvas(certRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: "#0a0818",
+        onclone: (_doc, el) => {
+          el.style.position = "absolute";
+          el.style.top = "0px";
+          el.style.left = "0px";
+        },
       });
 
-      // ── Brand header: Logo + "Mindly" centered as unit ───────────────
-      const LOGO_SIZE = 10 * S;
-      const BRAND_FONT = `bold ${13 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.font = BRAND_FONT;
-      const brandTextW = ctx.measureText("Mindly").width;
-      const brandGap = 2.5 * S;
-      const brandX = (CW - (LOGO_SIZE + brandGap + brandTextW)) / 2;
-      const brandTopY = 20 * S;
-      const brandMidY = brandTopY + LOGO_SIZE / 2;
-
-      try {
-        const logo = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = "/icons/logo-final.png";
-        });
-        ctx.drawImage(logo, brandX, brandTopY, LOGO_SIZE, LOGO_SIZE);
-      } catch {
-        ctx.beginPath();
-        ctx.arc(brandX + LOGO_SIZE / 2, brandMidY, LOGO_SIZE / 2, 0, Math.PI * 2);
-        ctx.fillStyle = "#7c1fff";
-        ctx.fill();
-      }
-      ctx.font = BRAND_FONT;
-      ctx.fillStyle = "#c39dff";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText("Mindly", brandX + LOGO_SIZE + brandGap, brandMidY);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-
-      // ── Brand subtitle ───────────────────────────────────────────────
-      ctx.font = `${7.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#7a6a9a";
-      ctx.fillText("Plataforma de Aprendizado com Inteligência Artificial", CW / 2, 37 * S);
-
-      // ── Gradient divider line ────────────────────────────────────────
-      {
-        const g = ctx.createLinearGradient(50 * S, 0, CW - 50 * S, 0);
-        g.addColorStop(0, "rgba(124,31,255,0)");
-        g.addColorStop(0.2, "rgba(124,31,255,0.65)");
-        g.addColorStop(0.8, "rgba(124,31,255,0.65)");
-        g.addColorStop(1, "rgba(124,31,255,0)");
-        ctx.strokeStyle = g;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(50 * S, 43 * S);
-        ctx.lineTo(CW - 50 * S, 43 * S);
-        ctx.stroke();
-      }
-
-      // ── Certificate title ────────────────────────────────────────────
-      ctx.font = `bold ${21 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText("Certificado de Conclusão", CW / 2, 60 * S);
-
-      ctx.font = `${9.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#a78bca";
-      ctx.fillText("Este certificado confirma que", CW / 2, 71 * S);
-
-      // ── User name ────────────────────────────────────────────────────
-      const displayName = userName?.trim() || "Estudante Mindly";
-      ctx.font = `bold ${25 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#c39dff";
-      ctx.fillText(displayName, CW / 2, 88 * S);
-
-      // Gradient underline below name
-      {
-        ctx.font = `bold ${25 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-        const nw = ctx.measureText(displayName).width;
-        const g = ctx.createLinearGradient(CW / 2 - nw / 2, 0, CW / 2 + nw / 2, 0);
-        g.addColorStop(0, "rgba(124,31,255,0)");
-        g.addColorStop(0.25, "rgba(195,157,255,0.7)");
-        g.addColorStop(0.75, "rgba(195,157,255,0.7)");
-        g.addColorStop(1, "rgba(124,31,255,0)");
-        ctx.fillStyle = g;
-        ctx.fillRect(CW / 2 - nw / 2, 90.5 * S, nw, 4);
-      }
-
-      ctx.font = `${9.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#a78bca";
-      ctx.fillText("concluiu com êxito a Jornada de Aprendizado", CW / 2, 101 * S);
-
-      // ── Journey title ────────────────────────────────────────────────
-      ctx.font = `bold ${14.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(journey.title, CW / 2, 114 * S);
-
-      ctx.font = `${8.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#6a5a8a";
-      ctx.fillText(
-        `${journey.duration_days} dias · ${journey.duration_days} lições concluídas`,
-        CW / 2, 123 * S,
-      );
-
-      // ── Lower gradient divider ───────────────────────────────────────
-      {
-        const g = ctx.createLinearGradient(50 * S, 0, CW - 50 * S, 0);
-        g.addColorStop(0, "rgba(80,40,120,0)");
-        g.addColorStop(0.2, "rgba(80,40,120,0.5)");
-        g.addColorStop(0.8, "rgba(80,40,120,0.5)");
-        g.addColorStop(1, "rgba(80,40,120,0)");
-        ctx.strokeStyle = g;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(50 * S, 130 * S);
-        ctx.lineTo(CW - 50 * S, 130 * S);
-        ctx.stroke();
-      }
-
-      // ── Issue date ───────────────────────────────────────────────────
-      const dateStr = new Date().toLocaleDateString("pt-BR", {
-        day: "2-digit", month: "long", year: "numeric",
-      });
-      ctx.font = `${8 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#5c3d8a";
-      ctx.fillText(`Emitido em ${dateStr}`, CW / 2, 140 * S);
-
-      // ── Certificate number ───────────────────────────────────────────
-      const certNum = `#CERT-${new Date().getFullYear()}-${Math.random().toString(36).toUpperCase().slice(2, 8)}`;
-      ctx.font = `${6.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#3a2a5a";
-      ctx.fillText(certNum, CW / 2, 148 * S);
-
-      // ── Decorative dot row ───────────────────────────────────────────
-      const DOT_Y = 159 * S;
-      ([ [-20, 0.28, 0.12], [-12, 0.33, 0.28], [-6, 0.38, 0.5],
-         [0, 0.55, 1],
-         [6, 0.38, 0.5], [12, 0.33, 0.28], [20, 0.28, 0.12] ] as [number, number, number][])
-        .forEach(([xMM, rMM, a]) => {
-          ctx.beginPath();
-          ctx.arc(CW / 2 + xMM * S, DOT_Y, rMM * S, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(124,31,255,${a})`;
-          ctx.fill();
-        });
-
-      // ── Footer ───────────────────────────────────────────────────────
-      ctx.font = `${6.5 * S}px 'Inter','Segoe UI',system-ui,sans-serif`;
-      ctx.fillStyle = "#3a2a5a";
-      ctx.fillText("mindly.app", CW / 2, 170 * S);
-
-      // ── Export canvas → PDF ──────────────────────────────────────────
-      const imgData = canvas.toDataURL("image/jpeg", 0.93);
-      const { jsPDF } = await import("jspdf");
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
       doc.addImage(imgData, "JPEG", 0, 0, 297, 210);
 
@@ -639,6 +448,16 @@ export default function Journey({
   /* ── Plano ── */
   return (
     <div className="flex flex-col min-h-screen" style={{ background: "#0f0a1e" }}>
+
+      {/* Off-screen certificate — captured by html2canvas on download */}
+      {journey && (
+        <JourneyCertificate
+          ref={certRef}
+          userName={userName?.trim() || "Estudante Mindly"}
+          journeyTitle={journey.title}
+          durationDays={journey.duration_days}
+        />
+      )}
 
       {/* Congrats Modal */}
       {showCongratsModal && (
