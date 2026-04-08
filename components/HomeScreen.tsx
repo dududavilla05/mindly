@@ -448,27 +448,23 @@ export default function HomeScreen({
       {/* Header desktop — fixo, começa após a sidebar (left-60 = 240px) */}
       {mounted && authReady && createPortal(
         <header
-          className="hidden md:grid fixed top-0 right-0 z-[9999] animate-fade-in px-6"
+          className="hidden md:flex fixed top-0 right-0 z-[9999] items-center gap-3 px-6 animate-fade-in"
           style={{
             left: "240px",
             height: "64px",
-            gridTemplateColumns: "1fr auto 1fr",
-            alignItems: "center",
             background: "rgba(15,10,30,0.9)",
             backdropFilter: "blur(20px)",
             borderBottom: "1px solid rgba(124,31,255,0.15)",
           }}
         >
           {/* Esquerda: Logo */}
-          <div
-            className="flex items-center pr-6"
-            style={{ borderRight: "1px solid rgba(124,31,255,0.15)" }}
-          >
-            <MindlyLogo size="sm" />
-          </div>
+          <MindlyLogo size="sm" />
 
-          {/* Centro: botões de navegação */}
-          <div className="flex items-center gap-2 px-8">
+          {/* Separador vertical sutil */}
+          <div className="shrink-0" style={{ width: "1px", height: "20px", background: "rgba(124,31,255,0.2)" }} />
+
+          {/* Botões de navegação */}
+          <div className="flex items-center gap-2">
             {/* Jornada */}
             {profile?.plan === "max" ? (
               <div className="relative group">
@@ -594,7 +590,7 @@ export default function HomeScreen({
           </div>
 
           {/* Direita: Avatar / Entrar */}
-          <div className="flex items-center justify-end">
+          <div className="ml-auto flex items-center">
             {user ? (
               <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
             ) : (
