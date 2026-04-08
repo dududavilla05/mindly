@@ -12,12 +12,17 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const base: Record<string, string> = { "Content-Type": "application/json" };
   try {
     const supabase = createSupabaseClient();
-    if (!supabase) return base;
-    const { data: { session } } = await supabase.auth.getSession();
+    if (!supabase) {
+      console.error("[idiomas] getAuthHeaders: supabase client é null");
+      return base;
+    }
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) console.error("[idiomas] getAuthHeaders: getSession error:", error.message);
     if (session?.access_token) {
+      console.log("[idiomas] getAuthHeaders: token OK, primeiros 20 chars:", session.access_token.slice(0, 20));
       base["Authorization"] = `Bearer ${session.access_token}`;
     } else {
-      console.warn("[idiomas] getAuthHeaders: sem session — chamadas à API podem retornar 401");
+      console.warn("[idiomas] getAuthHeaders: sem session — token undefined. Chamadas à API retornarão 401");
     }
   } catch (err) {
     console.error("[idiomas] getAuthHeaders error:", err);
@@ -205,36 +210,52 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   // ── Lógica central de save (sem guard) ──
   // Sempre usa sessionIdRef.current para evitar closures obsoletas.
   const doSave = useCallback(async (msgs: Message[], lang: string, lvl: string): Promise<boolean> => {
+    console.log("[idiomas:save] doSave chamado — msgs:", msgs.length, "lang:", lang, "lvl:", lvl);
     if (msgs.length < 2) {
-      console.log("[idiomas:save] skip — menos de 2 mensagens");
+      console.log("[idiomas:save] skip — menos de 2 mensagens (mínimo para salvar é 2)");
       return false;
     }
     const currentSid = sessionIdRef.current;
     const body: Record<string, unknown> = { language: lang, level: lvl, messages: msgs };
     if (currentSid) body.id = currentSid;
 
-    console.log("[idiomas:save] POST → sessionId:", currentSid ?? "NEW", "| msgs:", msgs.length);
+    console.log("[idiomas:save] POST /api/idiomas/sessions → sessionId:", currentSid ?? "NEW", "| msgs:", msgs.length);
 
     const headers = await getAuthHeaders();
-    const res = await fetch("/api/idiomas/sessions", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
+    console.log("[idiomas:save] Authorization header presente?", !!headers["Authorization"]);
 
-    if (!res.ok) {
-      console.error("[idiomas:save] API error:", data.error, "| status:", res.status);
+    let res: Response;
+    try {
+      res = await fetch("/api/idiomas/sessions", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch (fetchErr) {
+      console.error("[idiomas:save] fetch falhou (rede):", fetchErr);
       return false;
     }
 
-    console.log("[idiomas:save] ok → id:", data.id);
+    let data: Record<string, unknown> = {};
+    try {
+      data = await res.json();
+    } catch {
+      console.error("[idiomas:save] res.json() falhou — resposta não é JSON. Status:", res.status);
+      return false;
+    }
+
+    console.log("[idiomas:save] resposta status:", res.status, "| body:", JSON.stringify(data));
+
+    if (!res.ok) {
+      console.error("[idiomas:save] API retornou erro:", data.error, "| status:", res.status);
+      return false;
+    }
+
+    console.log("[idiomas:save] salvo com sucesso → id:", data.id);
 
     if (data.id && data.id !== currentSid) {
-      // Nova sessão — sincroniza ref + state
-      updateSessionId(data.id);
+      updateSessionId(data.id as string);
     }
-    // Sempre recarrega a lista após qualquer save bem-sucedido
     await refreshSessions();
     return true;
   }, [updateSessionId, refreshSessions]);
@@ -378,19 +399,21 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   };
 
   const handleEncerrar = () => {
+    console.log("[idiomas] handleEncerrar chamado — msgs:", messages.length, "| sessionId:", sessionIdRef.current ?? "null (nova)");
     // Cancela timer de auto-save pendente
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
+      console.log("[idiomas] handleEncerrar: timer de auto-save cancelado — salvando agora");
     }
     // Navega imediatamente — o usuário vê a tela de seleção sem esperar
     setView("select");
-    // Salva em background e sempre recarrega o histórico ao final,
-    // mesmo que o save falhe (para mostrar sessões salvas anteriormente)
+    // Salva em background e sempre recarrega o histórico ao final
     doSave(messages, selectedLanguage, selectedLevel)
-      .catch(err => console.error("[idiomas:save] handleEncerrar error:", err))
+      .then(ok => console.log("[idiomas] handleEncerrar: doSave retornou", ok))
+      .catch(err => console.error("[idiomas] handleEncerrar: doSave jogou exceção:", err))
       .finally(() => {
-        console.log("[idiomas] handleEncerrar: forçando refresh do histórico");
+        console.log("[idiomas] handleEncerrar: refresh do histórico após save");
         refreshSessions();
       });
   };
