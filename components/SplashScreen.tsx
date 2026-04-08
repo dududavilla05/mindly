@@ -190,8 +190,8 @@ export default function SplashScreen() {
             alt="Mindly"
             className="sp-logo"
             style={{
-              width:  typeof window !== "undefined" && window.innerWidth >= 768 ? "200px" : "88px",
-              height: typeof window !== "undefined" && window.innerWidth >= 768 ? "200px" : "88px",
+              width:  typeof window !== "undefined" && window.innerWidth >= 768 ? "320px" : "88px",
+              height: typeof window !== "undefined" && window.innerWidth >= 768 ? "320px" : "88px",
             }}
           />
           <span className="sp-title">Mindly</span>
