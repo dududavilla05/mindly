@@ -118,6 +118,9 @@ export default function SplashScreen() {
         @keyframes sp-content-in {
           to { opacity: 1; transform: scale(1); }
         }
+        @media (min-width: 768px) {
+          .sp-content { gap: 8px; }
+        }
 
         /* Logo — tamanhos controlados via style inline no elemento */
         .sp-logo {
@@ -190,8 +193,8 @@ export default function SplashScreen() {
             alt="Mindly"
             className="sp-logo"
             style={{
-              width:  typeof window !== "undefined" && window.innerWidth >= 768 ? "320px" : "88px",
-              height: typeof window !== "undefined" && window.innerWidth >= 768 ? "320px" : "88px",
+              width:  typeof window !== "undefined" && window.innerWidth >= 768 ? "400px" : "88px",
+              height: typeof window !== "undefined" && window.innerWidth >= 768 ? "400px" : "88px",
             }}
           />
           <span className="sp-title">Mindly</span>
