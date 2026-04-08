@@ -80,109 +80,6 @@ const LANG_LOCALE: Record<string, string> = {
   "Mandarim": "zh-CN",
 };
 
-// Prepara texto para TTS: remove markdown, emojis e símbolos desnecessários
-function prepareForTTS(text: string): string {
-  return text
-    // Blocos de código (remover inteiro — não faz sentido ler código)
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]+`/g, "")
-    // Markdown negrito/itálico/riscado
-    .replace(/\*\*\*(.*?)\*\*\*/g, "$1")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/_{2}(.*?)_{2}/g, "$1")
-    .replace(/_(.*?)_/g, "$1")
-    .replace(/~~(.*?)~~/g, "$1")
-    // Cabeçalhos
-    .replace(/#{1,6}\s+/gm, "")
-    // Links — mantém apenas o texto visível
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    // Blockquotes
-    .replace(/^>\s*/gm, "")
-    // Listas — mantém o texto, remove marcadores
-    .replace(/^[\s]*[-*+]\s+/gm, "")
-    .replace(/^[\s]*\d+\.\s+/gm, "")
-    // Emojis (todos os ranges Unicode)
-    .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
-    .replace(/[\u{2600}-\u{27BF}]/gu, "")
-    .replace(/[\u{1F300}-\u{1F9FF}]/gu, "")
-    .replace(/[\u200D\uFE0F]/g, "")
-    // Símbolos tipográficos
-    .replace(/[—–→←↑↓•·※★☆◆◇▶▷►]/g, " ")
-    .replace(/[~#^|\\]/g, "")
-    // Múltiplas quebras de linha → uma só
-    .replace(/\n{2,}/g, "\n")
-    // Espaços duplicados
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-}
-
-// Retorna a melhor voz disponível para o locale, priorizando vozes premium
-function pickBestVoice(locale: string): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices.length) return null;
-
-  const lang = locale.split("-")[0];
-  const PREMIUM = ["natural", "premium", "enhanced", "neural", "wavenet", "studio"];
-
-  // Para pt-BR: também aceita "Luciana" (iOS) e nomes pt-*
-  const exactMatch   = voices.filter(v => v.lang === locale);
-  const partialMatch = voices.filter(v => v.lang.startsWith(lang));
-  const pool = exactMatch.length ? exactMatch : partialMatch;
-  if (!pool.length) return voices[0] ?? null;
-
-  const premium = pool.find(v => PREMIUM.some(kw => v.name.toLowerCase().includes(kw)));
-  return premium ?? pool[0];
-}
-
-// ── Detecção de idioma por heurística de palavras-chave ──────────────────────
-// Palavras funcionais e exclusivas do português — raras em outras línguas
-const PT_WORDS = new Set([
-  "você","voce","para","que","uma","como","isso","seu","sua","com","por",
-  "não","nao","mas","são","sao","tem","ele","ela","nos","nós","num","numa",
-  "do","da","de","em","se","na","ao","os","as","pelo","pela","num",
-  "este","esta","esse","essa","mais","muito","então","entao","quando",
-  "onde","qual","também","tambem","porque","sempre","nunca","aqui","agora",
-  "depois","antes","tudo","nada","outro","outra","todos","todas",
-  "meu","minha","meus","minhas","nosso","nossa","nossos","nossas",
-  "significa","exemplo","exemplos","prática","praticar","aprender",
-  "frase","frases","palavra","palavras","verbo","verbos","substantivo",
-  "nível","nivel","iniciante","intermediário","avançado","avancado",
-  "veja","vamos","vou","vai","pode","deve","precisa","quer","tenho",
-  "estou","está","esta","estão","fazer","falar","usar","dizer","ver",
-  "agora","hoje","ontem","amanhã","amanha","ainda","mesmo","também",
-]);
-
-function isPortuguese(line: string): boolean {
-  const words = line.toLowerCase().match(/\b[a-záàâãéêíóôõúüçñ]+\b/g) ?? [];
-  if (!words.length) return false;
-  const ptCount = words.filter(w => PT_WORDS.has(w)).length;
-  // ≥2 palavras PT em qualquer tamanho, ou ≥1 em linhas curtas (≤4 palavras)
-  return ptCount >= 2 || (words.length <= 4 && ptCount >= 1);
-}
-
-// Divide o texto limpo em blocos {text, locale}, mesclando linhas consecutivas
-// do mesmo idioma para evitar micro-utterances
-function splitBilingualBlocks(
-  text: string,
-  foreignLocale: string,
-): Array<{ text: string; locale: string }> {
-  const PT_LOCALE = "pt-BR";
-  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-
-  // Agrupa linhas consecutivas de mesmo idioma
-  const blocks: Array<{ text: string; locale: string }> = [];
-  for (const line of lines) {
-    const locale = isPortuguese(line) ? PT_LOCALE : foreignLocale;
-    const last = blocks[blocks.length - 1];
-    if (last && last.locale === locale) {
-      last.text += " " + line;
-    } else {
-      blocks.push({ text: line, locale });
-    }
-  }
-  return blocks;
-}
 
 function formatTime(iso: string) {
   try {
@@ -278,7 +175,6 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [savingSession,    setSavingSession]    = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
-  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [listening,     setListening]     = useState(false);
   const [sttSupported,  setSttSupported]  = useState(true);
 
@@ -327,62 +223,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     if (view === "chat") inputRef.current?.focus();
   }, [view]);
 
-  // Cancela fala/microfone ao desmontar
+  // Cancela microfone ao desmontar
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (recognitionRef.current as any)?.stop();
     };
   }, []);
-
-  // ── TTS bilíngue: lê PT com voz pt-BR e idioma estrangeiro com voz própria ──
-  const speak = useCallback((text: string, index: number) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-    // Segundo clique no mesmo índice → para
-    if (speakingIndex === index) {
-      window.speechSynthesis.cancel();
-      setSpeakingIndex(null);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const foreignLocale = LANG_LOCALE[selectedLanguage] ?? "en-US";
-    const blocks = splitBilingualBlocks(prepareForTTS(text), foreignLocale);
-    if (!blocks.length) return;
-
-    // Encadeia utterances: cada bloco dispara o próximo no onend
-    const readBlocks = (remaining: typeof blocks, voiceCache: Map<string, SpeechSynthesisVoice | null>) => {
-      if (!remaining.length) { setSpeakingIndex(null); return; }
-      const [head, ...tail] = remaining;
-      const u = new SpeechSynthesisUtterance(head.text);
-      u.lang   = head.locale;
-      u.rate   = 0.9;
-      u.pitch  = 1.0;
-      u.volume = 1.0;
-      const voice = voiceCache.get(head.locale) ?? pickBestVoice(head.locale);
-      if (voice) u.voice = voice;
-      u.onend   = () => readBlocks(tail, voiceCache);
-      u.onerror = () => setSpeakingIndex(null);
-      window.speechSynthesis.speak(u);
-    };
-
-    const startReading = () => {
-      // Pré-carrega as duas vozes necessárias
-      const locales = [...new Set(blocks.map(b => b.locale))];
-      const voiceCache = new Map(locales.map(l => [l, pickBestVoice(l)]));
-      setSpeakingIndex(index);
-      readBlocks(blocks, voiceCache);
-    };
-
-    if (window.speechSynthesis.getVoices().length > 0) {
-      startReading();
-    } else {
-      window.speechSynthesis.addEventListener("voiceschanged", startReading, { once: true });
-    }
-  }, [speakingIndex, selectedLanguage]);
 
   // ── STT: reconhecimento de voz → input ──
   const startListening = useCallback(() => {
@@ -867,36 +714,9 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                         </ReactMarkdown>
                       )}
                     </div>
-                    {/* Timestamp + botão TTS para mensagens da IA */}
-                    <div className={`flex items-center gap-1.5 px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {/* Timestamp */}
+                    <div className={`flex items-center px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                       <span className="text-[10px] text-[#4a3870]">{formatTime(msg.ts)}</span>
-                      {msg.role === "assistant" && (
-                        <button
-                          onClick={() => speak(msg.content, i)}
-                          title={speakingIndex === i ? "Parar leitura" : "Ouvir em voz alta"}
-                          className="flex items-center justify-center rounded-lg transition-all duration-150 active:scale-90"
-                          style={{
-                            width: "22px", height: "22px",
-                            background: speakingIndex === i ? "rgba(124,31,255,0.3)" : "rgba(124,31,255,0.1)",
-                            border: `1px solid ${speakingIndex === i ? "rgba(124,31,255,0.6)" : "rgba(124,31,255,0.2)"}`,
-                            color: speakingIndex === i ? "#c39dff" : "#5a4870",
-                          }}
-                        >
-                          {speakingIndex === i ? (
-                            /* ícone parar */
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                              <rect x="6" y="6" width="12" height="12" rx="2" />
-                            </svg>
-                          ) : (
-                            /* ícone alto-falante */
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                            </svg>
-                          )}
-                        </button>
-                      )}
                     </div>
                   </div>
 
