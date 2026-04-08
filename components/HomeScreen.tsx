@@ -50,7 +50,11 @@ export default function HomeScreen({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [micListening,   setMicListening]   = useState(false);
+  const [micSupported,   setMicSupported]   = useState(true);
+  const [micError,       setMicError]       = useState<string | null>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const micRecognitionRef = useRef<unknown>(null);
 
   // Garantir que o portal e conteúdo dependente de auth só renderizam no cliente
   useEffect(() => {
@@ -85,6 +89,69 @@ export default function HomeScreen({
     const file = e.dataTransfer.files?.[0];
     if (file) handleImageFile(file);
   };
+
+  // Cleanup do microfone ao desmontar
+  useEffect(() => {
+    return () => { (micRecognitionRef.current as { stop?: () => void })?.stop?.(); };
+  }, []);
+
+  const startMicListening = useCallback(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setMicSupported(false); return; }
+
+    if (micListening) {
+      (micRecognitionRef.current as { stop?: () => void })?.stop?.();
+      return;
+    }
+
+    setMicError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+    } catch {
+      setMicError("Permissão de microfone negada. Habilite nas configurações do browser.");
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognition = new SR() as any;
+    recognition.lang           = "pt-BR";
+    recognition.continuous     = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart  = () => setMicListening(true);
+    recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
+      for (let i = e.results.length - 1; i >= 0; i--) {
+        if (e.results[i].isFinal) {
+          const t = e.results[i][0].transcript;
+          setSubject(prev => prev ? `${prev} ${t}` : t);
+          setError(null);
+          break;
+        }
+      }
+    };
+    recognition.onend   = () => setMicListening(false);
+    recognition.onerror = (e: { error: string }) => {
+      setMicListening(false);
+      const msgs: Record<string, string> = {
+        "not-allowed":   "Microfone bloqueado. Habilite a permissão nas configurações.",
+        "no-speech":     "Nenhuma fala detectada. Tente novamente.",
+        "network":       "Erro de rede no reconhecimento de voz.",
+        "audio-capture": "Nenhum microfone encontrado.",
+        "aborted":       "",
+      };
+      const msg = msgs[e.error] ?? `Erro no microfone: ${e.error}`;
+      if (msg) setMicError(msg);
+    };
+
+    micRecognitionRef.current = recognition;
+    try { recognition.start(); } catch {
+      setMicListening(false);
+      setMicError("Não foi possível iniciar o microfone. Tente novamente.");
+    }
+  }, [micListening]);
 
   const handleSuggestionClick = (suggestion: string) => {
     setSubject(suggestion);
@@ -456,6 +523,18 @@ export default function HomeScreen({
             <label className="text-sm font-semibold text-[#c39dff] uppercase tracking-widest">
               Qual é sua curiosidade hoje?
             </label>
+            {!micSupported && (
+              <p className="text-xs text-[#7a6a9a]">Reconhecimento de voz não suportado. Use Chrome ou Edge.</p>
+            )}
+            {micError && (
+              <button
+                onClick={() => setMicError(null)}
+                className="text-left text-xs px-3 py-1.5 rounded-xl"
+                style={{ background: "rgba(220,60,60,0.12)", border: "1px solid rgba(220,60,60,0.3)", color: "#f87171" }}
+              >
+                {micError}
+              </button>
+            )}
             <div className="relative">
               <textarea
                 value={subject}
@@ -466,23 +545,53 @@ export default function HomeScreen({
                     handleGenerate();
                   }
                 }}
-                placeholder="Ex: Como funciona a inflação? O que é machine learning?..."
+                placeholder={micListening ? "Ouvindo... fale agora" : "Ex: Como funciona a inflação? O que é machine learning?..."}
                 rows={3}
                 className="w-full resize-none rounded-2xl px-5 py-4 text-white placeholder-[#4a3870] text-base outline-none transition-all duration-200"
                 style={{
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(124, 31, 255, 0.2)",
+                  background: micListening ? "rgba(220,60,60,0.05)" : "rgba(255,255,255,0.06)",
+                  border: micListening ? "1px solid rgba(220,60,60,0.45)" : "1px solid rgba(124, 31, 255, 0.2)",
                   lineHeight: "1.6",
+                  paddingBottom: "48px",
                 }}
                 onFocus={(e) => {
-                  e.target.style.border = "1px solid rgba(124, 31, 255, 0.6)";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(124, 31, 255, 0.1)";
+                  if (!micListening) {
+                    e.target.style.border = "1px solid rgba(124, 31, 255, 0.6)";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(124, 31, 255, 0.1)";
+                  }
                 }}
                 onBlur={(e) => {
-                  e.target.style.border = "1px solid rgba(124, 31, 255, 0.2)";
-                  e.target.style.boxShadow = "none";
+                  if (!micListening) {
+                    e.target.style.border = "1px solid rgba(124, 31, 255, 0.2)";
+                    e.target.style.boxShadow = "none";
+                  }
                 }}
               />
+              {/* Botão microfone */}
+              <button
+                onClick={startMicListening}
+                title={micListening ? "Parar gravação" : "Falar em vez de digitar (pt-BR)"}
+                className={`absolute bottom-3 right-3 flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 ${micListening ? "animate-pulse" : ""}`}
+                style={{
+                  width: "36px", height: "36px",
+                  background: micListening ? "rgba(220,60,60,0.9)" : "rgba(124,31,255,0.15)",
+                  border: micListening ? "1px solid rgba(220,60,60,0.7)" : "1px solid rgba(124,31,255,0.3)",
+                  boxShadow: micListening ? "0 0 14px rgba(220,60,60,0.45)" : "none",
+                }}
+              >
+                {micListening ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
 

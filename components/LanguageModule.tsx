@@ -64,9 +64,10 @@ const LANGUAGES = [
 const LEVELS = ["Iniciante", "Intermediário", "Avançado"];
 
 const QUICK_ACTIONS = [
-  { label: "Me dê vocabulário do dia", emoji: "📚" },
-  { label: "Quero praticar conversação", emoji: "💬" },
-  { label: "Me explique uma gramática", emoji: "📝" },
+  { label: "Vocabulário do dia", emoji: "📚", prompt: "Me dê vocabulário do dia" },
+  { label: "Praticar conversação", emoji: "💬", prompt: "Quero praticar conversação" },
+  { label: "Explicar gramática", emoji: "📝", prompt: "Me explique uma gramática" },
+  { label: "Quiz rápido", emoji: "🎯", prompt: "Crie exatamente 3 questões de múltipla escolha sobre o vocabulário ou gramática que estudamos nesta sessão. Use OBRIGATORIAMENTE este formato para cada questão, sem variações:\n**Questão 1:** [pergunta]\nA) [opção]\nB) [opção]\nC) [opção]\nD) [opção]\n**Resposta correta:** [letra]\n\nRepita o bloco para as questões 2 e 3." },
 ];
 
 // Mapeamento idioma → locale BCP-47 para Web Speech API
@@ -161,6 +162,94 @@ const MarkdownComponents = {
   ),
 };
 
+// ── Quiz parser ──────────────────────────────────────────────────────────────
+interface QuizOption   { letter: string; text: string; }
+interface QuizQuestion { question: string; options: QuizOption[]; correct: string; }
+
+function parseQuiz(content: string): QuizQuestion[] | null {
+  const blocks = content.split(/(?=\*\*Questão \d+:\*\*)/);
+  const questions: QuizQuestion[] = [];
+
+  for (const block of blocks) {
+    if (!block.includes("**Questão")) continue;
+    const qMatch = block.match(/\*\*Questão \d+:\*\*\s*(.+?)(?:\n|$)/);
+    if (!qMatch) continue;
+
+    const options: QuizOption[] = [];
+    const optRe = /^([A-D])\)\s*(.+)$/gm;
+    let m;
+    while ((m = optRe.exec(block)) !== null) {
+      options.push({ letter: m[1], text: m[2].trim() });
+    }
+
+    const correctMatch = block.match(/\*\*Resposta correta:\*\*\s*([A-D])/);
+    if (options.length >= 2 && correctMatch) {
+      questions.push({ question: qMatch[1].trim(), options, correct: correctMatch[1] });
+    }
+  }
+  return questions.length > 0 ? questions : null;
+}
+
+// ── QuizBlock component ───────────────────────────────────────────────────────
+function QuizBlock({
+  questions, msgIndex, answers,
+  onAnswer,
+}: {
+  questions: QuizQuestion[];
+  msgIndex:  number;
+  answers:   Record<number, string>;
+  onAnswer:  (msgIndex: number, qIndex: number, letter: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {questions.map((q, qi) => {
+        const selected = answers[qi];
+        return (
+          <div key={qi} className="flex flex-col gap-2">
+            <p className="text-sm font-semibold text-white leading-snug">
+              {qi + 1}. {q.question}
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {q.options.map((opt) => {
+                const isSelected = selected === opt.letter;
+                const isCorrect  = opt.letter === q.correct;
+                const revealed   = !!selected;
+
+                let bg     = "rgba(124,31,255,0.08)";
+                let border = "rgba(124,31,255,0.2)";
+                let color  = "#c39dff";
+
+                if (revealed && isCorrect)              { bg = "rgba(34,197,94,0.15)";  border = "rgba(34,197,94,0.4)";  color = "#4ade80"; }
+                else if (revealed && isSelected)        { bg = "rgba(239,68,68,0.15)";  border = "rgba(239,68,68,0.4)";  color = "#f87171"; }
+
+                return (
+                  <button
+                    key={opt.letter}
+                    onClick={() => !selected && onAnswer(msgIndex, qi, opt.letter)}
+                    disabled={!!selected}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left transition-all duration-150 active:scale-[0.98] disabled:cursor-default"
+                    style={{ background: bg, border: `1px solid ${border}`, color }}
+                  >
+                    <span className="font-bold shrink-0 w-5">{opt.letter})</span>
+                    <span className="flex-1">{opt.text}</span>
+                    {revealed && isCorrect  && <span className="text-xs ml-auto shrink-0">✓</span>}
+                    {revealed && isSelected && !isCorrect && <span className="text-xs ml-auto shrink-0">✗</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {selected && (
+              <p className="text-[11px] px-1" style={{ color: selected === q.correct ? "#4ade80" : "#f87171" }}>
+                {selected === q.correct ? "Correto!" : `Errado — a resposta correta era ${q.correct})`}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function LanguageModule({ profile, onBack, onProfileUpdated }: LanguageModuleProps) {
   const [view,             setView]             = useState<"select" | "chat">("select");
   const [selectedLanguage, setSelectedLanguage] = useState(profile?.language_learning ?? "Inglês");
@@ -173,6 +262,8 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [sessionsLoading,  setSessionsLoading]  = useState(false);
   const [sessionId,        setSessionId]        = useState<string | null>(null);
   const [savingSession,    setSavingSession]    = useState(false);
+  // quizAnswers[msgIndex][questionIndex] = letra selecionada
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, Record<number, string>>>({});
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
   const [listening,     setListening]     = useState(false);
@@ -777,11 +868,29 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                     >
                       {msg.role === "user" ? (
                         msg.content
-                      ) : (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
-                          {msg.content}
-                        </ReactMarkdown>
-                      )}
+                      ) : (() => {
+                        const quiz = parseQuiz(msg.content);
+                        if (quiz) {
+                          return (
+                            <QuizBlock
+                              questions={quiz}
+                              msgIndex={i}
+                              answers={quizAnswers[i] ?? {}}
+                              onAnswer={(mi, qi, letter) =>
+                                setQuizAnswers(prev => ({
+                                  ...prev,
+                                  [mi]: { ...(prev[mi] ?? {}), [qi]: letter },
+                                }))
+                              }
+                            />
+                          );
+                        }
+                        return (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        );
+                      })()}
                     </div>
                     {/* Timestamp */}
                     <div className={`flex items-center px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -852,7 +961,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
-                  onClick={() => sendMessage(action.label)}
+                  onClick={() => sendMessage(action.prompt)}
                   disabled={loading}
                   className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-medium transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ height: "36px", background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)", color: "#c39dff" }}
