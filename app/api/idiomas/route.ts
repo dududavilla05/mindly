@@ -77,6 +77,10 @@ FORMATAÇÃO — siga estas regras rigorosamente:
 - Use cabeçalhos (###) somente em respostas longas e estruturadas — nunca em conversas simples.
 - Seja conciso e natural como uma conversa real. Sem paredes de texto nem listas intermináveis.
 
+TERMINOLOGIA GRAMATICAL — regra obrigatória:
+Quando explicar gramática em português, use SEMPRE os termos em português: "presente simples" (não "simple present"), "passado simples" (não "simple past"), "presente contínuo" (não "present continuous"), "futuro" (não "future tense"), "vocabulário" (não "vocabulary"), "pronúncia" (não "pronunciation"), "substantivo" (não "noun"), "verbo" (não "verb"), "adjetivo" (não "adjective"), "advérbio" (não "adverb"), "preposição" (não "preposition"), "conjunção" (não "conjunction"), "artigo" (não "article"), "plural" mantém, "singular" mantém.
+As explicações em português devem ser 100% em português. Apenas as frases de exemplo e o vocabulário ensinado devem estar no idioma estrangeiro.
+
 PEDAGOGIA: Adapte vocabulário e gramática ao nível ${level}. Proponha exercícios práticos apenas quando o contexto pedir explicitamente.`;
 
 
