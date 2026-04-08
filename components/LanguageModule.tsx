@@ -80,17 +80,61 @@ const LANG_LOCALE: Record<string, string> = {
   "Mandarim": "zh-CN",
 };
 
-// Remove markdown para leitura em voz alta
-function stripMarkdown(text: string): string {
+// Prepara texto para TTS: remove markdown, emojis e símbolos desnecessários
+function prepareForTTS(text: string): string {
   return text
+    // Blocos de código (remover inteiro — não faz sentido ler código)
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    // Markdown negrito/itálico/riscado
+    .replace(/\*\*\*(.*?)\*\*\*/g, "$1")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
-    .replace(/#{1,6}\s+/g, "")
-    .replace(/`{1,3}[\s\S]*?`{1,3}/g, "")
+    .replace(/_{2}(.*?)_{2}/g, "$1")
+    .replace(/_(.*?)_/g, "$1")
+    .replace(/~~(.*?)~~/g, "$1")
+    // Cabeçalhos
+    .replace(/#{1,6}\s+/gm, "")
+    // Links — mantém apenas o texto visível
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^>\s+/gm, "")
-    .replace(/[-*+]\s+/g, "")
+    // Blockquotes
+    .replace(/^>\s*/gm, "")
+    // Listas — mantém o texto, remove marcadores
+    .replace(/^[\s]*[-*+]\s+/gm, "")
+    .replace(/^[\s]*\d+\.\s+/gm, "")
+    // Emojis (todos os ranges Unicode)
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+    .replace(/[\u{2600}-\u{27BF}]/gu, "")
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, "")
+    .replace(/[\u200D\uFE0F]/g, "")
+    // Símbolos tipográficos
+    .replace(/[—–→←↑↓•·※★☆◆◇▶▷►]/g, " ")
+    .replace(/[~#^|\\]/g, "")
+    // Múltiplas quebras de linha → uma só
+    .replace(/\n{2,}/g, "\n")
+    // Espaços duplicados
+    .replace(/[ \t]{2,}/g, " ")
     .trim();
+}
+
+// Retorna a melhor voz disponível para o locale, priorizando vozes premium
+function pickBestVoice(locale: string): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+
+  const lang = locale.split("-")[0]; // ex: "en" de "en-US"
+  const PREMIUM_KEYWORDS = ["natural", "premium", "enhanced", "neural", "wavenet", "studio"];
+
+  const exactMatch   = voices.filter(v => v.lang === locale);
+  const partialMatch = voices.filter(v => v.lang.startsWith(lang));
+  const pool = exactMatch.length ? exactMatch : partialMatch;
+  if (!pool.length) return voices[0] ?? null; // fallback absoluto
+
+  // Procura voz premium no pool
+  const premium = pool.find(v =>
+    PREMIUM_KEYWORDS.some(kw => v.name.toLowerCase().includes(kw))
+  );
+  return premium ?? pool[0];
 }
 
 function formatTime(iso: string) {
@@ -257,13 +301,31 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     }
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(stripMarkdown(text));
-    utterance.lang = LANG_LOCALE[selectedLanguage] ?? "en-US";
-    utterance.rate = 0.9;
-    utterance.onend   = () => setSpeakingIndex(null);
-    utterance.onerror = () => setSpeakingIndex(null);
-    setSpeakingIndex(index);
-    window.speechSynthesis.speak(utterance);
+
+    const locale  = LANG_LOCALE[selectedLanguage] ?? "en-US";
+    const cleaned = prepareForTTS(text);
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.lang   = locale;
+    utterance.rate   = 0.9;
+    utterance.pitch  = 1.0;
+    utterance.volume = 1.0;
+
+    // Seleciona melhor voz disponível; se as vozes ainda não carregaram,
+    // espera o evento voiceschanged e dispara novamente
+    const trySpeak = () => {
+      const voice = pickBestVoice(locale);
+      if (voice) utterance.voice = voice;
+      setSpeakingIndex(index);
+      utterance.onend   = () => setSpeakingIndex(null);
+      utterance.onerror = () => setSpeakingIndex(null);
+      window.speechSynthesis.speak(utterance);
+    };
+
+    if (window.speechSynthesis.getVoices().length > 0) {
+      trySpeak();
+    } else {
+      window.speechSynthesis.addEventListener("voiceschanged", trySpeak, { once: true });
+    }
   }, [speakingIndex, selectedLanguage]);
 
   // ── STT: reconhecimento de voz → input ──
