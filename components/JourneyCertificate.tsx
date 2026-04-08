@@ -117,8 +117,8 @@ const JourneyCertificate = React.forwardRef<HTMLDivElement, CertProps>(
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={logoSrc}
-            width={80}
-            height={80}
+            width={120}
+            height={120}
             alt="Mindly"
             style={{ display: "block", margin: "0 auto 16px" }}
           />
