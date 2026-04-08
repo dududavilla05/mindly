@@ -121,9 +121,12 @@ export default function SplashScreen() {
 
         /* Logo */
         .sp-logo {
-          width: 120px;
-          height: 120px;
+          width: 72px;
+          height: 72px;
           object-fit: contain;
+        }
+        @media (min-width: 768px) {
+          .sp-logo { width: 120px; height: 120px; }
         }
 
         /* Título com gradiente de texto */
@@ -174,10 +177,9 @@ export default function SplashScreen() {
           100% { width: 100%; }
         }
 
-        @media (max-width: 480px) {
-          .sp-glow   { width: 260px; height: 260px; }
-          .sp-logo   { width: 100px; height: 100px; }
-          .sp-title  { font-size: 32px; }
+        @media (max-width: 767px) {
+          .sp-glow    { width: 260px; height: 260px; }
+          .sp-title   { font-size: 32px; }
           .sp-tagline { letter-spacing: 3px; }
         }
       `}</style>
