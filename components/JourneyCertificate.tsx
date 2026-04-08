@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 interface CertProps {
   userName: string;
@@ -13,6 +13,9 @@ interface CertProps {
  * Positioned at -9999px so it never shows in the UI, but remains in the DOM
  * so html2canvas can capture it. The `onclone` callback in html2canvas moves
  * it to (0,0) in the cloned document before rendering.
+ *
+ * The logo is pre-fetched and stored as a base64 data URL so html2canvas
+ * can render it correctly — relative paths are not resolved in the cloned doc.
  */
 const JourneyCertificate = React.forwardRef<HTMLDivElement, CertProps>(
   ({ userName, journeyTitle, durationDays }, ref) => {
@@ -27,6 +30,26 @@ const JourneyCertificate = React.forwardRef<HTMLDivElement, CertProps>(
       month: "long",
       year: "numeric",
     }).format(new Date());
+
+    // Load logo as base64 so html2canvas can render it in the cloned document
+    const [logoSrc, setLogoSrc] = useState<string>("/icons/logo-final.png");
+    useEffect(() => {
+      fetch("/icons/logo-final.png")
+        .then((r) => r.blob())
+        .then(
+          (blob) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            })
+        )
+        .then((b64) => setLogoSrc(b64))
+        .catch(() => {
+          // keep relative path as fallback
+        });
+    }, []);
 
     return (
       /* Invisible wrapper — keeps the element rendered but off-screen */
@@ -93,11 +116,11 @@ const JourneyCertificate = React.forwardRef<HTMLDivElement, CertProps>(
           {/* Logo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/icons/logo-final.png"
+            src={logoSrc}
             width={80}
             height={80}
             alt="Mindly"
-            style={{ display: "block", marginBottom: "16px" }}
+            style={{ display: "block", margin: "0 auto 16px" }}
           />
 
           {/* Title — two-tone blue → purple (html2canvas-safe) */}
