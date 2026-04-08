@@ -29,6 +29,7 @@ interface HomeScreenProps {
   onOpenMindMap?: () => void;
   onOpenJourney?: () => void;
   onOpenLanguage?: () => void;
+  onOpenChallenge?: () => void;
 }
 
 export default function HomeScreen({
@@ -40,6 +41,7 @@ export default function HomeScreen({
   onOpenMindMap,
   onOpenJourney,
   onOpenLanguage,
+  onOpenChallenge,
 }: HomeScreenProps) {
   const [subject, setSubject] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -377,6 +379,20 @@ export default function HomeScreen({
                   </div>
                 </div>
               )}
+
+              {/* Desafio */}
+              <button
+                onClick={onOpenChallenge}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200"
+                style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.25)" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Desafio
+              </button>
             </div>
           )}
         </div>,
@@ -483,6 +499,22 @@ export default function HomeScreen({
                   </div>
                 </div>
               )
+            )}
+
+            {/* Desafio */}
+            {user && (
+              <button
+                onClick={onOpenChallenge}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Desafio
+              </button>
             )}
 
             {/* Avatar / Entrar */}

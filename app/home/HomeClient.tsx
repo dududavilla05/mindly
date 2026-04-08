@@ -9,6 +9,7 @@ import LessonScreen from "@/components/LessonScreen";
 import MindMap from "@/components/MindMap";
 import Journey from "@/components/Journey";
 import LanguageModule from "@/components/LanguageModule";
+import ChallengeMode from "@/components/ChallengeMode";
 import OnboardingModal from "@/components/OnboardingModal";
 import Sidebar from "@/components/Sidebar";
 import HistoryDrawer from "@/components/HistoryDrawer";
@@ -27,7 +28,7 @@ interface HomeClientProps {
   initialProfile: UserProfile | null;
 }
 
-type AppScreen = "home" | "lesson" | "mindmap" | "journey" | "idiomas";
+type AppScreen = "home" | "lesson" | "mindmap" | "journey" | "idiomas" | "desafio";
 
 export default function HomeClient({ initialUser, initialProfile }: HomeClientProps) {
   const router = useRouter();
@@ -157,6 +158,11 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleOpenChallenge = () => {
+    setScreen("desafio");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleDeleteLesson = async (id: string) => {
     if (!supabase) return;
     // Optimistic: remove from UI immediately
@@ -193,7 +199,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
 
   return (
     <div className="flex min-h-screen">
-      {screen !== "idiomas" && (
+      {screen !== "idiomas" && screen !== "desafio" && (
         <Sidebar
           history={history}
           loading={historyLoading}
@@ -265,6 +271,11 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onBack={() => setScreen("home")}
             onProfileUpdated={refreshProfile}
           />
+        ) : screen === "desafio" ? (
+          <ChallengeMode
+            profile={profile}
+            onBack={() => setScreen("home")}
+          />
         ) : (
           <HomeScreen
             onLessonGenerated={handleLessonGenerated}
@@ -275,6 +286,7 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
             onOpenMindMap={() => handleOpenMindMap()}
             onOpenJourney={() => handleOpenJourney()}
             onOpenLanguage={handleOpenLanguage}
+            onOpenChallenge={handleOpenChallenge}
           />
         )}
       </main>
