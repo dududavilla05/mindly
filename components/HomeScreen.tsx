@@ -402,22 +402,24 @@ export default function HomeScreen({
       {/* Header desktop — fixo, começa após a sidebar (left-60 = 240px) */}
       {mounted && authReady && createPortal(
         <header
-          className="hidden md:flex fixed top-0 right-0 z-[9999] items-center px-6 animate-fade-in"
+          className="hidden md:grid fixed top-0 right-0 z-[9999] animate-fade-in px-6"
           style={{
             left: "240px",
             height: "64px",
+            gridTemplateColumns: "1fr auto 1fr",
+            alignItems: "center",
             background: "rgba(15,10,30,0.9)",
             backdropFilter: "blur(20px)",
             borderBottom: "1px solid rgba(124,31,255,0.15)",
           }}
         >
-          {/* Centro: Logo — absolutamente centralizado */}
-          <div className="absolute left-1/2 -translate-x-1/2">
+          {/* Esquerda: Logo */}
+          <div className="flex items-center">
             <MindlyLogo size="sm" />
           </div>
 
-          {/* Direita: botões de ação */}
-          <div className="ml-auto flex items-center gap-2">
+          {/* Centro: botões de navegação */}
+          <div className="flex items-center gap-2">
             {/* Jornada */}
             {profile?.plan === "max" ? (
               <button
@@ -441,7 +443,7 @@ export default function HomeScreen({
                   </svg>
                   Jornada
                 </button>
-                <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                   style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
                   Exclusivo plano Max
                 </div>
@@ -493,7 +495,7 @@ export default function HomeScreen({
                     </svg>
                     Idiomas
                   </button>
-                  <div className="absolute right-0 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                     style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
                     Exclusivo plano Max
                   </div>
@@ -516,8 +518,10 @@ export default function HomeScreen({
                 Desafio
               </button>
             )}
+          </div>
 
-            {/* Avatar / Entrar */}
+          {/* Direita: Avatar / Entrar */}
+          <div className="flex items-center justify-end">
             {user ? (
               <UserMenu user={user} profile={profile} onSignOut={onSignOut} />
             ) : (
