@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { UserProfile } from "@/app/page";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import FirstTimeModal from "./FirstTimeModal";
 
 // Retorna headers com Authorization: Bearer <token> para as chamadas à API.
 // Sem isso, o servidor não consegue identificar o usuário (sem middleware de cookies).
@@ -637,6 +638,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-x-hidden max-w-[100vw] box-border" style={{ background: "rgba(15,10,30,1)" }}>
+      <FirstTimeModal
+        storageKey="mindly_seen_idiomas"
+        icon="🌍"
+        title="Módulo de Idiomas"
+        description="Seu professor de IA nativo. Pratique conversação, aprenda vocabulário, corrija seus erros e evolua no seu ritmo em 7 idiomas diferentes."
+        buttonText="Começar a aprender!"
+      />
 
       {/* ── Header ── */}
       <div
