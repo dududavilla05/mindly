@@ -122,19 +122,66 @@ function pickBestVoice(locale: string): SpeechSynthesisVoice | null {
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
 
-  const lang = locale.split("-")[0]; // ex: "en" de "en-US"
-  const PREMIUM_KEYWORDS = ["natural", "premium", "enhanced", "neural", "wavenet", "studio"];
+  const lang = locale.split("-")[0];
+  const PREMIUM = ["natural", "premium", "enhanced", "neural", "wavenet", "studio"];
 
+  // Para pt-BR: também aceita "Luciana" (iOS) e nomes pt-*
   const exactMatch   = voices.filter(v => v.lang === locale);
   const partialMatch = voices.filter(v => v.lang.startsWith(lang));
   const pool = exactMatch.length ? exactMatch : partialMatch;
-  if (!pool.length) return voices[0] ?? null; // fallback absoluto
+  if (!pool.length) return voices[0] ?? null;
 
-  // Procura voz premium no pool
-  const premium = pool.find(v =>
-    PREMIUM_KEYWORDS.some(kw => v.name.toLowerCase().includes(kw))
-  );
+  const premium = pool.find(v => PREMIUM.some(kw => v.name.toLowerCase().includes(kw)));
   return premium ?? pool[0];
+}
+
+// ── Detecção de idioma por heurística de palavras-chave ──────────────────────
+// Palavras funcionais e exclusivas do português — raras em outras línguas
+const PT_WORDS = new Set([
+  "você","voce","para","que","uma","como","isso","seu","sua","com","por",
+  "não","nao","mas","são","sao","tem","ele","ela","nos","nós","num","numa",
+  "do","da","de","em","se","na","ao","os","as","pelo","pela","num",
+  "este","esta","esse","essa","mais","muito","então","entao","quando",
+  "onde","qual","também","tambem","porque","sempre","nunca","aqui","agora",
+  "depois","antes","tudo","nada","outro","outra","todos","todas",
+  "meu","minha","meus","minhas","nosso","nossa","nossos","nossas",
+  "significa","exemplo","exemplos","prática","praticar","aprender",
+  "frase","frases","palavra","palavras","verbo","verbos","substantivo",
+  "nível","nivel","iniciante","intermediário","avançado","avancado",
+  "veja","vamos","vou","vai","pode","deve","precisa","quer","tenho",
+  "estou","está","esta","estão","fazer","falar","usar","dizer","ver",
+  "agora","hoje","ontem","amanhã","amanha","ainda","mesmo","também",
+]);
+
+function isPortuguese(line: string): boolean {
+  const words = line.toLowerCase().match(/\b[a-záàâãéêíóôõúüçñ]+\b/g) ?? [];
+  if (!words.length) return false;
+  const ptCount = words.filter(w => PT_WORDS.has(w)).length;
+  // ≥2 palavras PT em qualquer tamanho, ou ≥1 em linhas curtas (≤4 palavras)
+  return ptCount >= 2 || (words.length <= 4 && ptCount >= 1);
+}
+
+// Divide o texto limpo em blocos {text, locale}, mesclando linhas consecutivas
+// do mesmo idioma para evitar micro-utterances
+function splitBilingualBlocks(
+  text: string,
+  foreignLocale: string,
+): Array<{ text: string; locale: string }> {
+  const PT_LOCALE = "pt-BR";
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  // Agrupa linhas consecutivas de mesmo idioma
+  const blocks: Array<{ text: string; locale: string }> = [];
+  for (const line of lines) {
+    const locale = isPortuguese(line) ? PT_LOCALE : foreignLocale;
+    const last = blocks[blocks.length - 1];
+    if (last && last.locale === locale) {
+      last.text += " " + line;
+    } else {
+      blocks.push({ text: line, locale });
+    }
+  }
+  return blocks;
 }
 
 function formatTime(iso: string) {
@@ -289,7 +336,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     };
   }, []);
 
-  // ── TTS: lê mensagem da IA em voz alta ──
+  // ── TTS bilíngue: lê PT com voz pt-BR e idioma estrangeiro com voz própria ──
   const speak = useCallback((text: string, index: number) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
@@ -302,29 +349,38 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     window.speechSynthesis.cancel();
 
-    const locale  = LANG_LOCALE[selectedLanguage] ?? "en-US";
-    const cleaned = prepareForTTS(text);
-    const utterance = new SpeechSynthesisUtterance(cleaned);
-    utterance.lang   = locale;
-    utterance.rate   = 0.9;
-    utterance.pitch  = 1.0;
-    utterance.volume = 1.0;
+    const foreignLocale = LANG_LOCALE[selectedLanguage] ?? "en-US";
+    const blocks = splitBilingualBlocks(prepareForTTS(text), foreignLocale);
+    if (!blocks.length) return;
 
-    // Seleciona melhor voz disponível; se as vozes ainda não carregaram,
-    // espera o evento voiceschanged e dispara novamente
-    const trySpeak = () => {
-      const voice = pickBestVoice(locale);
-      if (voice) utterance.voice = voice;
+    // Encadeia utterances: cada bloco dispara o próximo no onend
+    const readBlocks = (remaining: typeof blocks, voiceCache: Map<string, SpeechSynthesisVoice | null>) => {
+      if (!remaining.length) { setSpeakingIndex(null); return; }
+      const [head, ...tail] = remaining;
+      const u = new SpeechSynthesisUtterance(head.text);
+      u.lang   = head.locale;
+      u.rate   = 0.9;
+      u.pitch  = 1.0;
+      u.volume = 1.0;
+      const voice = voiceCache.get(head.locale) ?? pickBestVoice(head.locale);
+      if (voice) u.voice = voice;
+      u.onend   = () => readBlocks(tail, voiceCache);
+      u.onerror = () => setSpeakingIndex(null);
+      window.speechSynthesis.speak(u);
+    };
+
+    const startReading = () => {
+      // Pré-carrega as duas vozes necessárias
+      const locales = [...new Set(blocks.map(b => b.locale))];
+      const voiceCache = new Map(locales.map(l => [l, pickBestVoice(l)]));
       setSpeakingIndex(index);
-      utterance.onend   = () => setSpeakingIndex(null);
-      utterance.onerror = () => setSpeakingIndex(null);
-      window.speechSynthesis.speak(utterance);
+      readBlocks(blocks, voiceCache);
     };
 
     if (window.speechSynthesis.getVoices().length > 0) {
-      trySpeak();
+      startReading();
     } else {
-      window.speechSynthesis.addEventListener("voiceschanged", trySpeak, { once: true });
+      window.speechSynthesis.addEventListener("voiceschanged", startReading, { once: true });
     }
   }, [speakingIndex, selectedLanguage]);
 
