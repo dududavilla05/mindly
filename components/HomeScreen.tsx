@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import MindlyLogo from "./MindlyLogo";
@@ -19,6 +19,52 @@ const SUGGESTIONS = [
   { label: "Negociação", emoji: "🤝" },
   { label: "Produtividade", emoji: "⚡" },
 ];
+
+function NavTooltip({ title, description }: { title: string; description: string }) {
+  return (
+    <div
+      className="absolute left-1/2 -translate-x-1/2 z-[10000] pointer-events-none
+                 opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0
+                 transition-all duration-200 ease-out"
+      style={{ top: "calc(100% + 10px)", width: "220px" }}
+    >
+      {/* Seta */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rotate-45"
+        style={{
+          top: "-6px",
+          background: "#12102a",
+          borderTop: "1px solid rgba(124,31,255,0.3)",
+          borderLeft: "1px solid rgba(124,31,255,0.3)",
+        }}
+      />
+      {/* Caixa */}
+      <div
+        className="px-4 py-3 rounded-xl"
+        style={{
+          background: "#12102a",
+          border: "1px solid rgba(124,31,255,0.3)",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(124,31,255,0.06), 0 0 20px rgba(124,31,255,0.08)",
+        }}
+      >
+        <p
+          className="text-xs font-bold mb-1.5 leading-tight"
+          style={{
+            background: "linear-gradient(135deg, #d4b0ff, #a66aff)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          } as React.CSSProperties}
+        >
+          {title}
+        </p>
+        <p className="text-xs leading-relaxed" style={{ color: "rgba(196,176,220,0.82)" }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface HomeScreenProps {
   onLessonGenerated: (lesson: LessonContent, subject: string) => void;
@@ -422,16 +468,22 @@ export default function HomeScreen({
           <div className="flex items-center gap-2">
             {/* Jornada */}
             {profile?.plan === "max" ? (
-              <button
-                onClick={onOpenJourney}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
-                style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88"/>
-                </svg>
-                Jornada
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={onOpenJourney}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                  style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88"/>
+                  </svg>
+                  Jornada
+                </button>
+                <NavTooltip
+                  title="🗺️ Jornada de Aprendizado"
+                  description="Planos de 7, 15 ou 30 dias com IA. Evolua dia a dia com lições que se aprofundam no seu ritmo."
+                />
+              </div>
             ) : user ? (
               <div className="relative group">
                 <button
@@ -443,46 +495,58 @@ export default function HomeScreen({
                   </svg>
                   Jornada
                 </button>
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                  style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
-                  Exclusivo plano Max
-                </div>
+                <NavTooltip
+                  title="🗺️ Jornada de Aprendizado"
+                  description="Planos de 7, 15 ou 30 dias com IA. Evolua dia a dia com lições que se aprofundam no seu ritmo."
+                />
               </div>
             ) : null}
 
             {/* Mapa Mental */}
             {user && (
-              <button
-                onClick={onOpenMindMap}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
-                style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <circle cx="4" cy="6" r="2" /><line x1="6" y1="6" x2="9" y2="11" />
-                  <circle cx="20" cy="6" r="2" /><line x1="18" y1="6" x2="15" y2="11" />
-                  <circle cx="4" cy="18" r="2" /><line x1="6" y1="18" x2="9" y2="13" />
-                  <circle cx="20" cy="18" r="2" /><line x1="18" y1="18" x2="15" y2="13" />
-                </svg>
-                Mapa Mental
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={onOpenMindMap}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                  style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="4" cy="6" r="2" /><line x1="6" y1="6" x2="9" y2="11" />
+                    <circle cx="20" cy="6" r="2" /><line x1="18" y1="6" x2="15" y2="11" />
+                    <circle cx="4" cy="18" r="2" /><line x1="6" y1="18" x2="9" y2="13" />
+                    <circle cx="20" cy="18" r="2" /><line x1="18" y1="18" x2="15" y2="13" />
+                  </svg>
+                  Mapa Mental
+                </button>
+                <NavTooltip
+                  title="🧠 Mapa Mental com IA"
+                  description="Transforme qualquer tema em um mapa visual interativo. Expanda nós e explore conexões infinitas."
+                />
+              </div>
             )}
 
             {/* Idiomas */}
             {user && (
               profile?.plan === "max" ? (
-                <button
-                  onClick={onOpenLanguage}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
-                  style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="2" y1="12" x2="22" y2="12"/>
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                  </svg>
-                  Idiomas
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={onOpenLanguage}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                    style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="2" y1="12" x2="22" y2="12"/>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    Idiomas
+                  </button>
+                  <NavTooltip
+                    title="🌍 Módulo de Idiomas"
+                    description="Seu professor de IA nativo. Pratique conversação, corrija erros e aprenda vocabulário em 7 idiomas."
+                  />
+                </div>
               ) : (
                 <div className="relative group">
                   <button
@@ -495,28 +559,34 @@ export default function HomeScreen({
                     </svg>
                     Idiomas
                   </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-3 py-2 rounded-xl text-xs text-[#a78bca] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                    style={{ background: "rgba(15,10,30,0.97)", border: "1px solid rgba(124,31,255,0.2)" }}>
-                    Exclusivo plano Max
-                  </div>
+                  <NavTooltip
+                    title="🌍 Módulo de Idiomas"
+                    description="Seu professor de IA nativo. Pratique conversação, corrija erros e aprenda vocabulário em 7 idiomas."
+                  />
                 </div>
               )
             )}
 
             {/* Desafio */}
             {user && (
-              <button
-                onClick={onOpenChallenge}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
-                style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                Desafio
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={onOpenChallenge}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#c39dff] hover:text-white transition-all duration-200 hover:scale-105"
+                  style={{ background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  Desafio
+                </button>
+                <NavTooltip
+                  title="🎯 Modo Desafio"
+                  description="Teste seus conhecimentos com quizzes gerados por IA. Escolha o tema e o nível de dificuldade."
+                />
+              </div>
             )}
           </div>
 
