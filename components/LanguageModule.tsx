@@ -69,6 +69,30 @@ const QUICK_ACTIONS = [
   { label: "Me explique uma gramática", emoji: "📝" },
 ];
 
+// Mapeamento idioma → locale BCP-47 para Web Speech API
+const LANG_LOCALE: Record<string, string> = {
+  "Inglês":   "en-US",
+  "Espanhol": "es-ES",
+  "Francês":  "fr-FR",
+  "Alemão":   "de-DE",
+  "Italiano": "it-IT",
+  "Japonês":  "ja-JP",
+  "Mandarim": "zh-CN",
+};
+
+// Remove markdown para leitura em voz alta
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/`{1,3}[\s\S]*?`{1,3}/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^>\s+/gm, "")
+    .replace(/[-*+]\s+/g, "")
+    .trim();
+}
+
 function formatTime(iso: string) {
   try {
     return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -163,11 +187,16 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [savingSession,    setSavingSession]    = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
-  const bottomRef    = useRef<HTMLDivElement>(null);
-  const inputRef     = useRef<HTMLTextAreaElement>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [listening,     setListening]     = useState(false);
+  const [sttSupported,  setSttSupported]  = useState(true);
+
+  const bottomRef        = useRef<HTMLDivElement>(null);
+  const inputRef         = useRef<HTMLTextAreaElement>(null);
+  const saveTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionRef   = useRef<unknown>(null);
   // Espelha o state — garante valor atual dentro de callbacks/closures
-  const sessionIdRef       = useRef<string | null>(null);
+  const sessionIdRef        = useRef<string | null>(null);
   // Previne INSERT duplo: só um save com id=null pode rodar por vez
   const savingInProgressRef = useRef(false);
 
@@ -206,6 +235,66 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   useEffect(() => {
     if (view === "chat") inputRef.current?.focus();
   }, [view]);
+
+  // Cancela fala/microfone ao desmontar
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (recognitionRef.current as any)?.stop();
+    };
+  }, []);
+
+  // ── TTS: lê mensagem da IA em voz alta ──
+  const speak = useCallback((text: string, index: number) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    // Segundo clique no mesmo índice → para
+    if (speakingIndex === index) {
+      window.speechSynthesis.cancel();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(stripMarkdown(text));
+    utterance.lang = LANG_LOCALE[selectedLanguage] ?? "en-US";
+    utterance.rate = 0.9;
+    utterance.onend   = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    setSpeakingIndex(index);
+    window.speechSynthesis.speak(utterance);
+  }, [speakingIndex, selectedLanguage]);
+
+  // ── STT: reconhecimento de voz → input ──
+  const startListening = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setSttSupported(false); return; }
+
+    if (listening) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (recognitionRef.current as any)?.stop();
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognition = new SR() as any;
+    recognition.lang = LANG_LOCALE[selectedLanguage] ?? "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setListening(true);
+    recognition.onresult = (e: { results: { [x: string]: { [x: string]: { transcript: string } } } }) => {
+      const transcript = e.results[0][0].transcript;
+      setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+    };
+    recognition.onend   = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [listening, selectedLanguage]);
 
   // ── Lógica central de save (sem guard) ──
   // Sempre usa sessionIdRef.current para evitar closures obsoletas.
@@ -660,12 +749,37 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                         </ReactMarkdown>
                       )}
                     </div>
-                    {/* Timestamp */}
-                    <span
-                      className={`text-[10px] text-[#4a3870] px-1 ${msg.role === "user" ? "text-right" : "text-left"}`}
-                    >
-                      {formatTime(msg.ts)}
-                    </span>
+                    {/* Timestamp + botão TTS para mensagens da IA */}
+                    <div className={`flex items-center gap-1.5 px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <span className="text-[10px] text-[#4a3870]">{formatTime(msg.ts)}</span>
+                      {msg.role === "assistant" && (
+                        <button
+                          onClick={() => speak(msg.content, i)}
+                          title={speakingIndex === i ? "Parar leitura" : "Ouvir em voz alta"}
+                          className="flex items-center justify-center rounded-lg transition-all duration-150 active:scale-90"
+                          style={{
+                            width: "22px", height: "22px",
+                            background: speakingIndex === i ? "rgba(124,31,255,0.3)" : "rgba(124,31,255,0.1)",
+                            border: `1px solid ${speakingIndex === i ? "rgba(124,31,255,0.6)" : "rgba(124,31,255,0.2)"}`,
+                            color: speakingIndex === i ? "#c39dff" : "#5a4870",
+                          }}
+                        >
+                          {speakingIndex === i ? (
+                            /* ícone parar */
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                              <rect x="6" y="6" width="12" height="12" rx="2" />
+                            </svg>
+                          ) : (
+                            /* ícone alto-falante */
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Avatar do usuário */}
@@ -750,25 +864,66 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                 paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
               }}
             >
+              {/* Aviso browser sem suporte a STT */}
+              {!sttSupported && (
+                <p className="text-[11px] text-[#7a6a9a] mb-1.5 px-1">
+                  Seu browser não suporta reconhecimento de voz. Tente Chrome ou Edge.
+                </p>
+              )}
               <div className="flex items-end gap-2 min-w-0 overflow-hidden w-full">
                 <textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={`Escreva em ${selectedLanguage}...`}
+                  placeholder={listening ? "Ouvindo..." : `Escreva em ${selectedLanguage}...`}
                   rows={1}
                   disabled={loading}
                   className="flex-1 min-w-0 resize-none rounded-xl px-3 py-3 text-sm text-white placeholder-[#4a3870] outline-none transition-all duration-200 disabled:opacity-50"
                   style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(124,31,255,0.25)",
+                    background: listening ? "rgba(124,31,255,0.08)" : "rgba(255,255,255,0.05)",
+                    border: listening ? "1px solid rgba(220,60,60,0.6)" : "1px solid rgba(124,31,255,0.25)",
                     maxHeight: "120px",
                     lineHeight: "1.5",
                   }}
-                  onFocus={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.6)"; }}
-                  onBlur={(e)  => { e.target.style.border = "1px solid rgba(124,31,255,0.25)"; }}
+                  onFocus={(e) => { if (!listening) e.target.style.border = "1px solid rgba(124,31,255,0.6)"; }}
+                  onBlur={(e)  => { if (!listening) e.target.style.border = "1px solid rgba(124,31,255,0.25)"; }}
                 />
+
+                {/* Botão microfone — STT */}
+                <button
+                  onClick={startListening}
+                  disabled={loading}
+                  title={listening ? "Parar gravação" : "Falar em vez de digitar"}
+                  className="flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  style={{
+                    width: "44px", height: "44px",
+                    background: listening
+                      ? "rgba(220,60,60,0.85)"
+                      : "rgba(124,31,255,0.15)",
+                    border: listening
+                      ? "1px solid rgba(220,60,60,0.6)"
+                      : "1px solid rgba(124,31,255,0.3)",
+                    boxShadow: listening ? "0 0 12px rgba(220,60,60,0.4)" : "none",
+                    animation: listening ? "pulse 1.2s infinite" : "none",
+                  }}
+                >
+                  {listening ? (
+                    /* ícone parar gravação */
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ) : (
+                    /* ícone microfone */
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  )}
+                </button>
+
                 {/* Botão enviar — 44px para iOS HIG, nunca some */}
                 <button
                   onClick={() => sendMessage()}
