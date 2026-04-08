@@ -38,15 +38,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Disponível apenas no plano Max." }, { status: 403 });
     }
 
-    const { messages, userMessage, language, level }: {
+    const { messages, userMessage, language, level, shortcutKey }: {
       messages: LanguageMessage[];
       userMessage: string;
       language: string;
       level: string;
+      shortcutKey?: string;
     } = await request.json();
 
     if (!userMessage?.trim()) {
       return NextResponse.json({ error: "Mensagem vazia." }, { status: 400 });
+    }
+
+    // Verifica cache para atalhos fixos
+    if (shortcutKey) {
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const { data: cached } = await admin
+        .from("language_cache")
+        .select("content")
+        .eq("language", language)
+        .eq("level", level)
+        .eq("shortcut_key", shortcutKey)
+        .eq("cache_date", today)
+        .maybeSingle();
+
+      if (cached?.content) {
+        return NextResponse.json({ reply: cached.content });
+      }
     }
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
@@ -97,6 +115,17 @@ PEDAGOGIA: Adapte vocabulário e gramática ao nível ${level}. Proponha exercí
     const textContent = response.content.find((c) => c.type === "text");
     if (!textContent || textContent.type !== "text") {
       throw new Error("Resposta inválida da IA");
+    }
+
+    // Salva no cache se for um atalho fixo
+    if (shortcutKey) {
+      const today = new Date().toISOString().slice(0, 10);
+      await admin
+        .from("language_cache")
+        .upsert(
+          { language, level, shortcut_key: shortcutKey, content: textContent.text, cache_date: today },
+          { onConflict: "language,level,shortcut_key,cache_date" }
+        );
     }
 
     return NextResponse.json({ reply: textContent.text });

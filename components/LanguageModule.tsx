@@ -64,10 +64,10 @@ const LANGUAGES = [
 const LEVELS = ["Iniciante", "Intermediário", "Avançado"];
 
 const QUICK_ACTIONS = [
-  { label: "Vocabulário do dia", emoji: "📚", prompt: "Me dê vocabulário do dia" },
-  { label: "Praticar conversação", emoji: "💬", prompt: "Quero praticar conversação" },
-  { label: "Explicar gramática", emoji: "📝", prompt: "Me explique uma gramática" },
-  { label: "Quiz rápido", emoji: "🎯", prompt: "Crie exatamente 3 questões de múltipla escolha sobre o vocabulário ou gramática que estudamos nesta sessão. Use OBRIGATORIAMENTE este formato para cada questão, sem variações:\n**Questão 1:** [pergunta]\nA) [opção]\nB) [opção]\nC) [opção]\nD) [opção]\n**Resposta correta:** [letra]\n\nRepita o bloco para as questões 2 e 3." },
+  { label: "Vocabulário do dia", emoji: "📚", prompt: "Me dê vocabulário do dia", shortcutKey: "vocabulario" },
+  { label: "Praticar conversação", emoji: "💬", prompt: "Quero praticar conversação", shortcutKey: "conversacao" },
+  { label: "Explicar gramática", emoji: "📝", prompt: "Me explique uma gramática", shortcutKey: "gramatica" },
+  { label: "Quiz rápido", emoji: "🎯", prompt: "Crie exatamente 3 questões de múltipla escolha sobre o vocabulário ou gramática que estudamos nesta sessão. Use OBRIGATORIAMENTE este formato para cada questão, sem variações:\n**Questão 1:** [pergunta]\nA) [opção]\nB) [opção]\nC) [opção]\nD) [opção]\n**Resposta correta:** [letra]\n\nRepita o bloco para as questões 2 e 3.", shortcutKey: "quiz" },
 ];
 
 // Mapeamento idioma → locale BCP-47 para Web Speech API
@@ -551,7 +551,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     if (sessionIdRef.current === id) updateSessionId(null);
   };
 
-  const sendMessage = async (text?: string) => {
+  const sendMessage = async (text?: string, shortcutKey?: string) => {
     const msg = (text ?? input).trim();
     if (!msg || loading) return;
 
@@ -571,6 +571,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
           userMessage: msg,
           language: selectedLanguage,
           level: selectedLevel,
+          ...(shortcutKey ? { shortcutKey } : {}),
         }),
       });
       const data = await res.json();
@@ -942,7 +943,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
-                  onClick={() => sendMessage(action.prompt)}
+                  onClick={() => sendMessage(action.prompt, action.shortcutKey)}
                   disabled={loading}
                   className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-medium transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ height: "36px", background: "rgba(124,31,255,0.10)", border: "1px solid rgba(124,31,255,0.22)", color: "#c39dff" }}
