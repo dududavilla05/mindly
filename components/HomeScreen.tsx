@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import MindlyLogo from "./MindlyLogo";
 import AuthModal from "./AuthModal";
 import UpgradeModal from "./UpgradeModal";
@@ -457,11 +458,15 @@ export default function HomeScreen({
             borderBottom: "1px solid rgba(124,31,255,0.15)",
           }}
         >
-          {/* Esquerda: Logo */}
-          <MindlyLogo size="sm" />
-
-          {/* Separador vertical sutil */}
-          <div className="shrink-0" style={{ width: "1px", height: "20px", background: "rgba(124,31,255,0.2)" }} />
+          {/* Esquerda: ícone */}
+          <Image
+            src="/icons/logo-final.png"
+            alt="Mindly"
+            width={32}
+            height={32}
+            style={{ width: 32, height: 32, borderRadius: 7, objectFit: "contain" }}
+            priority
+          />
 
           {/* Botões de navegação */}
           <div className="flex items-center gap-2">
