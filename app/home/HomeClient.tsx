@@ -11,6 +11,7 @@ import Journey from "@/components/Journey";
 import LanguageModule from "@/components/LanguageModule";
 import ChallengeMode from "@/components/ChallengeMode";
 import OnboardingModal from "@/components/OnboardingModal";
+import ParticleBackground from "@/components/ParticleBackground";
 import Sidebar from "@/components/Sidebar";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import { useHistory } from "@/hooks/useHistory";
@@ -198,7 +199,9 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
   };
 
   return (
-    <div className="flex min-h-screen">
+    <>
+    <ParticleBackground />
+    <div className="flex min-h-screen" style={{ position: "relative", zIndex: 1 }}>
       {screen !== "idiomas" && screen !== "desafio" && (
         <Sidebar
           history={history}
@@ -332,5 +335,6 @@ export default function HomeClient({ initialUser, initialProfile }: HomeClientPr
         mapsToday={mapsToday}
       />
     </div>
+    </>
   );
 }
