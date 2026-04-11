@@ -10,9 +10,10 @@ interface AuthModalProps {
 }
 
 function translateError(message: string): string {
-  if (message.includes("Invalid login credentials")) return "E-mail ou senha incorretos.";
+  if (message.includes("Invalid login credentials"))
+    return "E-mail ou senha incorretos. Se você criou conta com Google, use o botão acima.";
   if (message.includes("Email not confirmed")) return "Confirme seu e-mail antes de entrar.";
-  if (message.includes("User already registered")) return "Este e-mail já está cadastrado.";
+  if (message.includes("User already registered")) return "Este e-mail já está cadastrado. Tente entrar ou use 'Esqueci minha senha'.";
   if (message.includes("Password should be")) return "A senha deve ter pelo menos 6 caracteres.";
   if (message.includes("rate limit") || message.includes("over_email_send_rate_limit"))
     return "Muitas tentativas. Aguarde alguns minutos.";
@@ -44,25 +45,6 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     );
   }
 
-  const checkOAuthProvider = async (emailToCheck: string) => {
-    try {
-      const res = await fetch("/api/check-auth-provider", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToCheck }),
-      });
-      if (!res.ok) return;
-      const data: { provider: string | null } = await res.json();
-      if (data.provider === "google") {
-        setError("Este e-mail está vinculado ao login com Google. Use o botão \"Continuar com Google\" para entrar.");
-      } else if (data.provider === "azure") {
-        setError("Este e-mail está vinculado ao login com Microsoft. Use o botão \"Entrar com Microsoft\" para entrar.");
-      }
-    } catch {
-      // silently ignore — keep the generic error already set
-    }
-  };
-
   const handleEmailAuth = async () => {
     if (!email.trim() || !password.trim()) {
       setError("Preencha e-mail e senha.");
@@ -70,25 +52,20 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     }
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            setError("E-mail ou senha incorretos.");
-            // Async — updates error if the email belongs to an OAuth account
-            void checkOAuthProvider(email);
-          } else {
-            throw error;
-          }
-        } else {
-          onSuccess();
-          onClose();
-        }
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+        onSuccess();
+        onClose();
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -119,7 +96,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     if (error) {
       setError(translateError(error.message));
     } else {
-      setSuccess("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
+      setSuccess("Email de redefinição enviado! Verifique sua caixa de entrada.");
     }
   };
 
