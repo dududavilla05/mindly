@@ -141,33 +141,59 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     const svg = container.querySelector("svg") as SVGSVGElement | null;
     if (!svg) { setExportingPdf(false); return; }
 
-    // Clone the SVG so we never mutate the live React DOM during the async capture.
-    // This avoids React re-renders overwriting our temporary style changes mid-flight.
     const w = container.offsetWidth;
     const h = container.offsetHeight;
 
+    // Clone SVG — never mutate the live React DOM during async capture
     const svgClone = svg.cloneNode(true) as SVGSVGElement;
     svgClone.setAttribute("width", String(w));
     svgClone.setAttribute("height", String(h));
 
-    // White background rect — inserted before all other SVG children
+    // Dark background rect matching app theme
     const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     bgRect.setAttribute("x", "0");
     bgRect.setAttribute("y", "0");
     bgRect.setAttribute("width", "100%");
     bgRect.setAttribute("height", "100%");
-    bgRect.setAttribute("fill", "#ffffff");
+    bgRect.setAttribute("fill", "#0f0a1e");
     svgClone.insertBefore(bgRect, svgClone.firstChild);
 
-    // Darken edge strokes — original rgba(160,100,255,0.28) is nearly invisible on white
-    svgClone.querySelectorAll('path[fill="none"]').forEach(path => {
-      path.setAttribute("stroke", "rgba(90,30,180,0.55)");
+    // ── Fit all nodes into view ────────────────────────────────────────────────
+    // 1. Remove the user's current pan/zoom transform from the main group so
+    //    node positions are in raw content-space coordinates.
+    const mainGroup = svgClone.querySelector(":scope > g") as SVGGElement | null;
+    if (mainGroup) mainGroup.removeAttribute("transform");
+
+    // 2. Compute bounding box from every mindmap-node's translate(x,y)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    svgClone.querySelectorAll("g.mindmap-node").forEach(g => {
+      const m = (g.getAttribute("transform") ?? "").match(/translate\(([^,]+),\s*([^)]+)\)/);
+      if (!m) return;
+      const nx = parseFloat(m[1]);
+      const ny = parseFloat(m[2]);
+      // Conservative half-dimensions: root=160×60 + 14px halo; level1=140×50; level2=120×40
+      const hw = 95; // (160/2) + 15
+      const hh = 46; // (60/2)  + 16
+      minX = Math.min(minX, nx - hw);
+      minY = Math.min(minY, ny - hh);
+      maxX = Math.max(maxX, nx + hw);
+      maxY = Math.max(maxY, ny + hh);
     });
 
-    // Off-screen container below the viewport (same pattern as LessonScreen to avoid
-    // backdrop-filter compositor interference)
+    // 3. Set viewBox so the entire content is visible, with padding
+    if (minX < Infinity) {
+      const PAD = 55;
+      svgClone.setAttribute(
+        "viewBox",
+        `${minX - PAD} ${minY - PAD} ${maxX - minX + PAD * 2} ${maxY - minY + PAD * 2}`
+      );
+      svgClone.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // Off-screen container below viewport (avoids backdrop-filter compositor issues)
     const tempDiv = document.createElement("div");
-    tempDiv.style.cssText = `position:fixed; left:0; top:100vh; width:${w}px; height:${h}px; background:#ffffff; overflow:hidden;`;
+    tempDiv.style.cssText = `position:fixed; left:0; top:100vh; width:${w}px; height:${h}px; background:#0f0a1e; overflow:hidden;`;
     tempDiv.appendChild(svgClone);
     document.body.appendChild(tempDiv);
 
@@ -176,7 +202,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       const { jsPDF } = await import("jspdf");
 
       const canvas = await html2canvas(tempDiv, {
-        backgroundColor: "#ffffff",
+        backgroundColor: "#0f0a1e",
         scale: 2,
         useCORS: true,
         logging: false,
@@ -187,18 +213,18 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       const pdfH = 210;
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-      // White background
-      doc.setFillColor(255, 255, 255);
+      // Dark background
+      doc.setFillColor(15, 10, 30);
       doc.rect(0, 0, pdfW, pdfH, "F");
 
-      // Title — dark purple on white
-      doc.setTextColor(100, 20, 180);
+      // Title
+      doc.setTextColor(195, 157, 255);
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.text(topic.trim() || "Mapa Mental", pdfW / 2, 12, { align: "center" });
 
       // Subtitle
-      doc.setTextColor(140, 100, 180);
+      doc.setTextColor(90, 60, 138);
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.text("Gerado pelo Mindly · Powered by Claude AI", pdfW / 2, 19, { align: "center" });
