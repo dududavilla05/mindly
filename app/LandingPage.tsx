@@ -223,11 +223,11 @@ function LaptopMockup() {
           {["#ef4444","#f59e0b","#22c55e"].map((c,i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c, opacity: 0.7 }} />)}
         </div>
         {/* Screenshot */}
-        <div style={{ width: "100%", height: 210, borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ width: "100%", borderRadius: 8, overflow: "hidden" }}>
           <img
             src="/screenshots/licao.png"
             alt="Mindly app – lições personalizadas"
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+            style={{ display: "block", width: "100%", height: 210, objectFit: "cover", objectPosition: "top" }}
           />
         </div>
       </div>
@@ -253,11 +253,11 @@ function PhoneMockup({ type }: { type: "map" | "challenge" }) {
         {/* Notch */}
         <div style={{ width: 56, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 10, margin: "0 auto 14px", flexShrink: 0 }} />
         {/* Screenshot */}
-        <div style={{ flex: 1, minHeight: 260, borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden" }}>
           <img
             src={src}
             alt={alt}
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+            style={{ display: "block", width: "100%", height: 260, objectFit: "cover", objectPosition: "top" }}
           />
         </div>
         {/* Home bar */}
