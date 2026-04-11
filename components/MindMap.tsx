@@ -136,12 +136,47 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   const handleExportPdf = useCallback(async () => {
     if (!mapContainerRef.current || nodes.length === 0) return;
     setExportingPdf(true);
+
+    const container = mapContainerRef.current;
+    const svg = container.querySelector("svg") as SVGSVGElement | null;
+    if (!svg) { setExportingPdf(false); return; }
+
+    // Clone the SVG so we never mutate the live React DOM during the async capture.
+    // This avoids React re-renders overwriting our temporary style changes mid-flight.
+    const w = container.offsetWidth;
+    const h = container.offsetHeight;
+
+    const svgClone = svg.cloneNode(true) as SVGSVGElement;
+    svgClone.setAttribute("width", String(w));
+    svgClone.setAttribute("height", String(h));
+
+    // White background rect — inserted before all other SVG children
+    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bgRect.setAttribute("x", "0");
+    bgRect.setAttribute("y", "0");
+    bgRect.setAttribute("width", "100%");
+    bgRect.setAttribute("height", "100%");
+    bgRect.setAttribute("fill", "#ffffff");
+    svgClone.insertBefore(bgRect, svgClone.firstChild);
+
+    // Darken edge strokes — original rgba(160,100,255,0.28) is nearly invisible on white
+    svgClone.querySelectorAll('path[fill="none"]').forEach(path => {
+      path.setAttribute("stroke", "rgba(90,30,180,0.55)");
+    });
+
+    // Off-screen container below the viewport (same pattern as LessonScreen to avoid
+    // backdrop-filter compositor interference)
+    const tempDiv = document.createElement("div");
+    tempDiv.style.cssText = `position:fixed; left:0; top:100vh; width:${w}px; height:${h}px; background:#ffffff; overflow:hidden;`;
+    tempDiv.appendChild(svgClone);
+    document.body.appendChild(tempDiv);
+
     try {
       const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
 
-      const canvas = await html2canvas(mapContainerRef.current, {
-        backgroundColor: "#0f0a1e",
+      const canvas = await html2canvas(tempDiv, {
+        backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
         logging: false,
@@ -152,14 +187,18 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       const pdfH = 210;
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-      // Título
-      doc.setFillColor(15, 10, 30);
+      // White background
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pdfW, pdfH, "F");
-      doc.setTextColor(195, 157, 255);
+
+      // Title — dark purple on white
+      doc.setTextColor(100, 20, 180);
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.text(topic.trim() || "Mapa Mental", pdfW / 2, 12, { align: "center" });
-      doc.setTextColor(90, 60, 138);
+
+      // Subtitle
+      doc.setTextColor(140, 100, 180);
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.text("Gerado pelo Mindly · Powered by Claude AI", pdfW / 2, 19, { align: "center" });
@@ -187,6 +226,8 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     } catch (e) {
       console.error("[MindMap PDF]", e);
     } finally {
+      document.body.removeChild(tempDiv);
+      void document.body.offsetHeight; // force repaint to clear compositor state
       setExportingPdf(false);
     }
   }, [nodes, topic]);
