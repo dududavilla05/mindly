@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -87,7 +88,16 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
 
         {/* Cabeçalho */}
         <div className="text-center pr-4">
-          <div className="text-3xl mb-2">🧠</div>
+          <div className="flex justify-center mb-3">
+            <Image
+              src="/icons/logo-final.png"
+              alt="Mindly"
+              width={64}
+              height={64}
+              style={{ borderRadius: 16, objectFit: "contain" }}
+              priority
+            />
+          </div>
           <h2 className="text-xl font-bold text-white">Bem-vindo ao Mindly</h2>
           <p className="text-[#a78bca] text-sm mt-1">
             Entre com sua conta Google ou Microsoft para começar
