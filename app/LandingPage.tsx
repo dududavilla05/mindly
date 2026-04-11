@@ -159,8 +159,8 @@ export default function LandingPage() {
   ];
 
   const faqs = [
-    { q: "O Mindly é gratuito?", a: "Sim! O plano Grátis oferece 3 lições e 1 mapa mental por dia sem custo. Para uso ilimitado e recursos exclusivos como Mentor IA e prática de idiomas, temos os planos Pro e Max." },
-    { q: "Como o Mindly usa Inteligência Artificial?", a: "O Mindly é powered by Claude, a IA da Anthropic. Cada lição, mapa mental, desafio e conversa é gerado em tempo real especificamente para você — nada é pré-fabricado." },
+    { q: "O Mindly é gratuito?", a: "Sim! O plano Grátis oferece 10 lições, 3 mapas mentais e 5 desafios por dia sem custo. Para uso ilimitado e recursos exclusivos como Mentor IA e prática de idiomas, temos os planos Pro e Max." },
+    { q: "Como o Mindly usa Inteligência Artificial?", a: "O Mindly utiliza IA avançada para gerar cada lição, mapa mental, desafio e conversa em tempo real especificamente para você — nada é pré-fabricado ou genérico." },
     { q: "Posso usar no celular?", a: "Sim! O Mindly é totalmente responsivo e funciona perfeitamente em qualquer dispositivo — celular, tablet ou computador." },
     { q: "Quais idiomas posso aprender?", a: "Atualmente suportamos inglês, espanhol, francês, alemão, italiano, japonês, mandarim e português (para falantes de outros idiomas). Novos idiomas são adicionados regularmente." },
     { q: "Posso cancelar a qualquer momento?", a: "Sim, sem burocracia. Você pode cancelar ou mudar de plano quando quiser, sem multas ou fidelidade." },
@@ -200,10 +200,10 @@ export default function LandingPage() {
         <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", maxWidth: 800, margin: "0 auto" }}>
-          {/* Claude badge */}
+          {/* IA badge */}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 40, padding: "6px 16px", marginBottom: 32 }}>
             <span style={{ fontSize: "0.85rem" }}>✦</span>
-            <span style={{ fontSize: "0.85rem", color: "#a78bfa", fontWeight: 500 }}>Powered by Claude AI da Anthropic</span>
+            <span style={{ fontSize: "0.85rem", color: "#a78bfa", fontWeight: 500 }}>Inteligência Artificial avançada</span>
           </div>
 
           <h1 style={{ fontSize: "clamp(2.4rem, 6vw, 4rem)", fontWeight: 900, lineHeight: 1.1, margin: "0 0 24px", color: "#f8fafc" }}>
@@ -379,9 +379,9 @@ export default function LandingPage() {
                 period="/mês"
                 cta="Começar grátis"
                 features={[
-                  { text: "3 lições por dia", included: true },
-                  { text: "1 mapa mental por dia", included: true },
-                  { text: "Modo Desafio", included: true },
+                  { text: "10 lições por dia", included: true },
+                  { text: "3 mapas mentais por dia", included: true },
+                  { text: "5 desafios por dia", included: true },
                   { text: "Histórico de lições", included: true },
                   { text: "Jornadas de aprendizado", included: false },
                   { text: "Prática de idiomas", included: false },
@@ -392,7 +392,7 @@ export default function LandingPage() {
             <Reveal delay={100}>
               <PricingCard
                 name="Pro"
-                price="R$ 19"
+                price="R$ 26,99"
                 period="/mês"
                 cta="Assinar Pro"
                 highlighted
@@ -411,7 +411,7 @@ export default function LandingPage() {
             <Reveal delay={200}>
               <PricingCard
                 name="Max"
-                price="R$ 39"
+                price="R$ 48,99"
                 period="/mês"
                 cta="Assinar Max"
                 features={[
@@ -543,9 +543,7 @@ export default function LandingPage() {
               © {new Date().getFullYear()} Mindly. Todos os direitos reservados.
             </p>
             <p style={{ color: "#334155", fontSize: "0.82rem", margin: 0 }}>
-              Powered by{" "}
-              <span style={{ color: "#7c3aed", fontWeight: 600 }}>Claude AI</span>
-              {" "}· Anthropic
+              Feito com ❤️ no Brasil 🇧🇷
             </p>
           </div>
         </div>
