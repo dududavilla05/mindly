@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -36,7 +37,10 @@ type ExportState = "idle" | "confirm" | "loading" | "done" | "error";
 export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [exportState, setExportState] = useState<ExportState>("idle");
+  const [mounted, setMounted] = useState(false);
   const supabase = createClient();
+
+  useEffect(() => { setMounted(true); }, []);
 
   const handleSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
@@ -300,8 +304,8 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
         )}
       </div>
 
-      {/* Modal de export */}
-      {exportState !== "idle" && (
+      {/* Modal de export — renderizado via portal diretamente no document.body */}
+      {mounted && exportState !== "idle" && createPortal(
         <div
           style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
           onClick={exportState === "confirm" ? closeExportModal : undefined}
@@ -423,7 +427,8 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
