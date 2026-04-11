@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { showToast } from "./Toast";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -72,8 +73,10 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
       URL.revokeObjectURL(url);
 
       setExportState("done");
+      showToast("Dados exportados com sucesso!");
     } catch {
       setExportState("error");
+      showToast("Erro ao exportar os dados.", "error");
     }
   };
 

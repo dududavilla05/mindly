@@ -129,9 +129,12 @@ export default function Sidebar({
               ))}
             </div>
           ) : history.length === 0 ? (
-            <p className="text-xs text-center text-white/25 mt-6 px-3 leading-relaxed">
-              Suas lições aparecem aqui
-            </p>
+            <div className="flex flex-col items-center gap-2 mt-8 px-3 text-center">
+              <span className="text-2xl">✨</span>
+              <p className="text-xs text-white/40 leading-relaxed">
+                Nenhuma lição ainda.<br />Comece digitando um tema acima!
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col gap-1">
               {history.map((item) => (
@@ -184,7 +187,12 @@ export default function Sidebar({
                   </div>
                 ))
               ) : mindMaps.length === 0 ? (
-                <p className="text-xs text-center text-white/25 mt-6">Nenhum mapa salvo</p>
+                <div className="flex flex-col items-center gap-2 mt-8 px-3 text-center">
+                  <span className="text-2xl">🧠</span>
+                  <p className="text-xs text-white/40 leading-relaxed">
+                    Crie seu primeiro mapa mental!
+                  </p>
+                </div>
               ) : (
                 mindMaps.map((item) => (
                   <div
@@ -235,7 +243,12 @@ export default function Sidebar({
                   </div>
                 ))
               ) : journeys.length === 0 ? (
-                <p className="text-xs text-center text-white/25 mt-6">Nenhuma jornada criada</p>
+                <div className="flex flex-col items-center gap-2 mt-8 px-3 text-center">
+                  <span className="text-2xl">🗺️</span>
+                  <p className="text-xs text-white/40 leading-relaxed">
+                    Inicie sua primeira jornada de aprendizado!
+                  </p>
+                </div>
               ) : (
                 journeys.map((item) => {
                   const pct = Math.round((item.completed_days / item.duration_days) * 100);

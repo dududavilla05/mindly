@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import SplashScreen from "@/components/SplashScreen";
+import Toast from "@/components/Toast";
 
 export const metadata: Metadata = {
   title: "Mindly — Aprenda qualquer coisa com IA",
@@ -63,6 +64,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-[#0f0a1e] text-white antialiased">
         <SplashScreen />
         <ServiceWorkerRegistration />
+        <Toast />
         {children}
       </body>
     </html>
