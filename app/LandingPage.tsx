@@ -223,12 +223,11 @@ function LaptopMockup() {
           {["#ef4444","#f59e0b","#22c55e"].map((c,i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c, opacity: 0.7 }} />)}
         </div>
         {/* Screenshot */}
-        <div style={{ position: "relative", width: "100%", height: 210, borderRadius: 8, overflow: "hidden" }}>
-          <Image
-            src="/screenshots/mindly-ruby.vercel.app_home.png"
+        <div style={{ width: "100%", height: 210, borderRadius: 8, overflow: "hidden" }}>
+          <img
+            src="/screenshots/licao.png"
             alt="Mindly app – lições personalizadas"
-            fill
-            style={{ objectFit: "cover", objectPosition: "top" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
           />
         </div>
       </div>
@@ -240,7 +239,7 @@ function LaptopMockup() {
 }
 
 function PhoneMockup({ type }: { type: "map" | "challenge" }) {
-  const src = type === "map" ? "/screenshots/Mapa.png" : "/screenshots/desafio.png";
+  const src = type === "map" ? "/screenshots/mapa.png" : "/screenshots/desafio.png";
   const alt = type === "map" ? "Mindly app – mapas mentais" : "Mindly app – modo desafio";
   return (
     <div style={{ width: 180, margin: "0 auto" }}>
@@ -254,12 +253,11 @@ function PhoneMockup({ type }: { type: "map" | "challenge" }) {
         {/* Notch */}
         <div style={{ width: 56, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 10, margin: "0 auto 14px", flexShrink: 0 }} />
         {/* Screenshot */}
-        <div style={{ position: "relative", flex: 1, minHeight: 260, borderRadius: 12, overflow: "hidden" }}>
-          <Image
+        <div style={{ flex: 1, minHeight: 260, borderRadius: 12, overflow: "hidden" }}>
+          <img
             src={src}
             alt={alt}
-            fill
-            style={{ objectFit: "cover", objectPosition: "top" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
           />
         </div>
         {/* Home bar */}
