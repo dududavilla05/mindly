@@ -27,6 +27,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [microsoftLoading, setMicrosoftLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
@@ -43,6 +44,25 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     );
   }
 
+  const checkOAuthProvider = async (emailToCheck: string) => {
+    try {
+      const res = await fetch("/api/check-auth-provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailToCheck }),
+      });
+      if (!res.ok) return;
+      const data: { provider: string | null } = await res.json();
+      if (data.provider === "google") {
+        setError("Este e-mail está vinculado ao login com Google. Use o botão \"Continuar com Google\" para entrar.");
+      } else if (data.provider === "azure") {
+        setError("Este e-mail está vinculado ao login com Microsoft. Use o botão \"Entrar com Microsoft\" para entrar.");
+      }
+    } catch {
+      // silently ignore — keep the generic error already set
+    }
+  };
+
   const handleEmailAuth = async () => {
     if (!email.trim() || !password.trim()) {
       setError("Preencha e-mail e senha.");
@@ -54,9 +74,18 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     try {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        onSuccess();
-        onClose();
+        if (error) {
+          if (error.message.includes("Invalid login credentials")) {
+            setError("E-mail ou senha incorretos.");
+            // Async — updates error if the email belongs to an OAuth account
+            void checkOAuthProvider(email);
+          } else {
+            throw error;
+          }
+        } else {
+          onSuccess();
+          onClose();
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -73,6 +102,24 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
       setError(translateError(msg));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Digite seu e-mail acima antes de redefinir a senha.");
+      return;
+    }
+    setResetLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/auth/callback?next=/home`,
+    });
+    setResetLoading(false);
+    if (error) {
+      setError(translateError(error.message));
+    } else {
+      setSuccess("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
     }
   };
 
@@ -291,6 +338,18 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
             onBlur={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.2)"; e.target.style.boxShadow = "none"; }}
             onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
           />
+          {mode === "login" && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading || loading || !!success}
+                className="text-xs text-[#a78bfa] hover:underline disabled:opacity-50 transition-opacity"
+              >
+                {resetLoading ? "Enviando..." : "Esqueci minha senha"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Botão principal */}
