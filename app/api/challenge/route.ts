@@ -15,6 +15,8 @@ async function getAuthUser(request: NextRequest) {
   }
 }
 
+const CHALLENGE_LIMITS: Record<string, number> = { gratis: 5, pro: 15 };
+
 const DIFFICULTY_COUNT: Record<string, number> = {
   "Fácil":   5,
   "Médio":   10,
@@ -45,6 +47,28 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Verificar limite diário de desafios
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("plan, challenges_today, last_challenge_date")
+      .eq("id", user.id)
+      .single();
+
+    const plan = profile?.plan ?? "gratis";
+    const today = new Date().toISOString().slice(0, 10);
+    const lastDate = profile?.last_challenge_date ?? null;
+    const challengesToday = lastDate === today ? (profile?.challenges_today ?? 0) : 0;
+
+    if (plan !== "max") {
+      const limit = CHALLENGE_LIMITS[plan] ?? 5;
+      if (challengesToday >= limit) {
+        return NextResponse.json(
+          { error: `Limite de ${limit} desafios por dia atingido. Faça upgrade para continuar.` },
+          { status: 429 }
+        );
+      }
+    }
+
     // Verificar cache (busca case-insensitive por topic)
     const { data: cached } = await admin
       .from("challenge_cache")
@@ -54,6 +78,11 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (cached?.questions) {
+      // Incrementar contador mesmo em cache hit
+      await admin.from("profiles").update({
+        challenges_today: challengesToday + 1,
+        last_challenge_date: today,
+      }).eq("id", user.id);
       return NextResponse.json({ questions: cached.questions });
     }
 
@@ -103,6 +132,12 @@ Regras obrigatórias:
     await admin
       .from("challenge_cache")
       .insert({ topic: topic.trim(), difficulty, questions: data.questions });
+
+    // Incrementar contador de desafios do usuário
+    await admin.from("profiles").update({
+      challenges_today: challengesToday + 1,
+      last_challenge_date: today,
+    }).eq("id", user.id);
 
     return NextResponse.json({ questions: data.questions });
   } catch (error) {

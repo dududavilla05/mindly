@@ -136,7 +136,7 @@ function repairJson(raw: string): unknown | null {
   try { return JSON.parse(s); } catch { return null; }
 }
 
-const FREE_PLAN_LIMIT = 10;
+const LESSON_LIMITS: Record<string, number> = { gratis: 10, pro: 20 };
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -204,12 +204,15 @@ export async function POST(request: NextRequest) {
         const lessonsToday = lastDate === today ? (profile.lessons_today ?? 0) : 0;
         userProfile = { ...profile, lessons_today: lessonsToday, streak_days: profile.streak_days ?? 0 };
 
-        // Verificar limite do plano grátis
-        if (userProfile.plan === "gratis" && userProfile.lessons_today >= FREE_PLAN_LIMIT) {
-          return NextResponse.json(
-            { error: "limite_atingido", lessonsToday: userProfile.lessons_today },
-            { status: 429 }
-          );
+        // Verificar limite por plano (gratis e pro têm limite; max é ilimitado)
+        if (userProfile.plan !== "max") {
+          const limit = LESSON_LIMITS[userProfile.plan] ?? 10;
+          if (userProfile.lessons_today >= limit) {
+            return NextResponse.json(
+              { error: "limite_atingido", lessonsToday: userProfile.lessons_today },
+              { status: 429 }
+            );
+          }
         }
       }
     }
