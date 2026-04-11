@@ -436,28 +436,14 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
                   />
                 )}
 
-                {/* Selection dashed ring */}
-                {isSelected && (
-                  <rect
-                    x={-(hw + pad)} y={-(hh + pad)}
-                    width={w + pad * 2} height={h + pad * 2}
-                    rx={rx + 4}
-                    fill="none"
-                    stroke="rgba(200,140,255,0.6)"
-                    strokeWidth="2"
-                    strokeDasharray="6 3"
-                    style={{ animation: "spin 3s linear infinite", transformOrigin: "0 0" }}
-                  />
-                )}
-
                 {/* Main rounded rect */}
                 <rect
                   x={-hw} y={-hh}
                   width={w} height={h}
                   rx={rx}
                   fill={fill}
-                  stroke={isExpanding || isSelected ? "#fff" : strokeColor + "66"}
-                  strokeWidth={isExpanding || isSelected ? 2 : 1.5}
+                  stroke={strokeColor + "66"}
+                  strokeWidth={1.5}
                   filter={isRoot ? "url(#glow-lg)" : "url(#glow-sm)"}
                 />
 
@@ -469,20 +455,6 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
                   fill="rgba(255,255,255,0.12)"
                   style={{ pointerEvents: "none" }}
                 />
-
-                {/* Expanding dashed ring */}
-                {isExpanding && (
-                  <rect
-                    x={-(hw + pad)} y={-(hh + pad)}
-                    width={w + pad * 2} height={h + pad * 2}
-                    rx={rx + 4}
-                    fill="none"
-                    stroke="rgba(255,255,255,0.45)"
-                    strokeWidth="1.5"
-                    strokeDasharray="5 4"
-                    style={{ animation: "spin 1.5s linear infinite", transformOrigin: "0 0" }}
-                  />
-                )}
 
                 {/* Label text — vertically centred */}
                 {lines.map((line, i) => (
@@ -506,8 +478,7 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
         </g>
 
         <style>{`
-          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-          @keyframes dotFade { 0%, 80%, 100% { opacity: 0.15; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+          @keyframes dotFade { 0%, 60%, 100% { opacity: 0.15; } 30% { opacity: 1; } }
         `}</style>
       </svg>
 
