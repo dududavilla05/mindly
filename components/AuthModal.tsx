@@ -9,28 +9,10 @@ interface AuthModalProps {
   onSuccess: () => void;
 }
 
-function translateError(message: string): string {
-  if (message.includes("Invalid login credentials"))
-    return "E-mail ou senha incorretos. Se você criou conta com Google, use o botão acima.";
-  if (message.includes("Email not confirmed")) return "Confirme seu e-mail antes de entrar.";
-  if (message.includes("User already registered")) return "Este e-mail já está cadastrado. Tente entrar ou use 'Esqueci minha senha'.";
-  if (message.includes("Password should be")) return "A senha deve ter pelo menos 6 caracteres.";
-  if (message.includes("rate limit") || message.includes("over_email_send_rate_limit"))
-    return "Muitas tentativas. Aguarde alguns minutos.";
-  if (message.includes("Unable to validate")) return "Link expirado. Tente novamente.";
-  return message;
-}
-
 export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [microsoftLoading, setMicrosoftLoading] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
 
   if (!supabase) {
@@ -45,61 +27,6 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     );
   }
 
-  const handleEmailAuth = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError("Preencha e-mail e senha.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        onSuccess();
-        onClose();
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        if (error) throw error;
-        setSuccess("Verifique seu e-mail para confirmar o cadastro!");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido.";
-      setError(translateError(msg));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      setError("Digite seu e-mail acima antes de redefinir a senha.");
-      return;
-    }
-    setResetLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/callback?next=/home`,
-    });
-    setResetLoading(false);
-    if (error) {
-      setError(translateError(error.message));
-    } else {
-      setSuccess("Email de redefinição enviado! Verifique sua caixa de entrada.");
-    }
-  };
-
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     setError(null);
@@ -110,7 +37,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
       },
     });
     if (error) {
-      setError(translateError(error.message));
+      setError(error.message);
       setGoogleLoading(false);
     }
   };
@@ -125,15 +52,9 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
       },
     });
     if (error) {
-      setError(translateError(error.message));
+      setError(error.message);
       setMicrosoftLoading(false);
     }
-  };
-
-  const switchMode = (newMode: "login" | "signup") => {
-    setMode(newMode);
-    setError(null);
-    setSuccess(null);
   };
 
   return (
@@ -167,53 +88,11 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         {/* Cabeçalho */}
         <div className="text-center pr-4">
           <div className="text-3xl mb-2">🧠</div>
-          <h2 className="text-xl font-bold text-white">
-            {mode === "login" ? "Bem-vindo de volta!" : "Crie sua conta grátis"}
-          </h2>
+          <h2 className="text-xl font-bold text-white">Bem-vindo ao Mindly</h2>
           <p className="text-[#a78bca] text-sm mt-1">
-            {mode === "login"
-              ? "Continue de onde parou"
-              : "10 lições por dia, sem cartão de crédito"}
+            Entre com sua conta Google ou Microsoft para começar
           </p>
         </div>
-
-        {/* Abas */}
-        <div
-          className="flex rounded-xl overflow-hidden p-1 gap-1"
-          style={{ background: "rgba(255,255,255,0.04)" }}
-        >
-          {(["login", "signup"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => switchMode(tab)}
-              className="flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200"
-              style={
-                mode === tab
-                  ? {
-                      background: "linear-gradient(135deg, #7c1fff, #a66aff)",
-                      color: "white",
-                      boxShadow: "0 2px 10px rgba(124,31,255,0.4)",
-                    }
-                  : { color: "#6b4fa0" }
-              }
-            >
-              {tab === "login" ? "Entrar" : "Criar conta"}
-            </button>
-          ))}
-        </div>
-
-        {/* Mensagem de sucesso */}
-        {success && (
-          <div
-            className="px-4 py-3 rounded-xl text-sm text-emerald-300 flex items-start gap-2"
-            style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)" }}
-          >
-            <svg width="16" height="16" className="mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            {success}
-          </div>
-        )}
 
         {/* Mensagem de erro */}
         {error && (
@@ -233,7 +112,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         {/* Google */}
         <button
           onClick={handleGoogleAuth}
-          disabled={googleLoading || loading}
+          disabled={googleLoading || microsoftLoading}
           className="w-full py-3 rounded-xl flex items-center justify-center gap-3 text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           style={{
             background: "rgba(255,255,255,0.07)",
@@ -259,7 +138,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         {/* Microsoft */}
         <button
           onClick={handleMicrosoftAuth}
-          disabled={microsoftLoading || loading}
+          disabled={microsoftLoading || googleLoading}
           className="w-full py-3 rounded-xl flex items-center justify-center gap-3 text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           style={{
             background: "rgba(255,255,255,0.07)",
@@ -280,70 +159,6 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
             </svg>
           )}
           Entrar com Microsoft
-        </button>
-
-        {/* Separador */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px" style={{ background: "rgba(124,31,255,0.2)" }} />
-          <span className="text-xs text-[#4a3870] font-medium">ou com e-mail</span>
-          <div className="flex-1 h-px" style={{ background: "rgba(124,31,255,0.2)" }} />
-        </div>
-
-        {/* Formulário */}
-        <div className="flex flex-col gap-3">
-          <input
-            type="email"
-            placeholder="Seu e-mail"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setError(null); }}
-            disabled={loading || !!success}
-            className="w-full px-4 py-3 rounded-xl text-white placeholder-[#4a3870] text-sm outline-none transition-all duration-200 disabled:opacity-50"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(124,31,255,0.2)" }}
-            onFocus={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(124,31,255,0.08)"; }}
-            onBlur={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.2)"; e.target.style.boxShadow = "none"; }}
-            onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
-          />
-          <input
-            type="password"
-            placeholder="Senha (mín. 6 caracteres)"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(null); }}
-            disabled={loading || !!success}
-            className="w-full px-4 py-3 rounded-xl text-white placeholder-[#4a3870] text-sm outline-none transition-all duration-200 disabled:opacity-50"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(124,31,255,0.2)" }}
-            onFocus={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(124,31,255,0.08)"; }}
-            onBlur={(e) => { e.target.style.border = "1px solid rgba(124,31,255,0.2)"; e.target.style.boxShadow = "none"; }}
-            onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
-          />
-          {mode === "login" && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={resetLoading || loading || !!success}
-                className="text-xs text-[#a78bfa] hover:underline disabled:opacity-50 transition-opacity"
-              >
-                {resetLoading ? "Enviando..." : "Esqueci minha senha"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Botão principal */}
-        <button
-          onClick={handleEmailAuth}
-          disabled={loading || !!success}
-          className="w-full py-3.5 rounded-xl font-bold text-white text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: "linear-gradient(135deg, #7c1fff 0%, #a66aff 100%)",
-            boxShadow: "0 4px 20px rgba(124,31,255,0.45)",
-          }}
-        >
-          {loading
-            ? "Carregando..."
-            : mode === "login"
-            ? "Entrar na conta"
-            : "Criar conta grátis"}
         </button>
 
         <p className="text-center text-xs text-[#4a3870]">

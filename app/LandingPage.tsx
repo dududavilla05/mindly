@@ -191,7 +191,7 @@ function PricingCard({ name, price, period, features, cta, highlighted, badge }:
           </li>
         ))}
       </ul>
-      <Link href="/home" style={{
+      <Link href="/login" style={{
         display: "block", marginTop: 28, textAlign: "center",
         padding: "14px 0", borderRadius: 12, fontWeight: 700, fontSize: "0.95rem",
         background: highlighted ? "linear-gradient(135deg, #7c3aed, #6366f1)" : "rgba(255,255,255,0.06)",
@@ -405,7 +405,7 @@ export default function LandingPage() {
               onMouseEnter={e => (e.currentTarget.style.color = "#e2e8f0")}
               onMouseLeave={e => (e.currentTarget.style.color = "#94a3b8")}
             >Entrar</Link>
-            <Link href="/home" style={{
+            <Link href="/login" style={{
               padding: "9px 22px", borderRadius: 10, fontWeight: 700, fontSize: "0.9rem",
               background: "linear-gradient(135deg, #7c3aed, #6366f1)",
               color: "#fff", textDecoration: "none",
@@ -454,7 +454,7 @@ export default function LandingPage() {
           </p>
 
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/home" style={{
+            <Link href="/login" style={{
               padding: "16px 38px", borderRadius: 14, fontWeight: 700, fontSize: "1.05rem",
               background: "linear-gradient(135deg, #7c3aed, #6366f1)",
               color: "#fff", textDecoration: "none",
@@ -819,7 +819,7 @@ export default function LandingPage() {
                 <p style={{ color: "#94a3b8", fontSize: "1.1rem", margin: "0 0 36px", lineHeight: 1.75 }}>
                   Junte-se a milhares de pessoas que já transformaram sua forma de aprender. Comece grátis hoje.
                 </p>
-                <Link href="/home" style={{
+                <Link href="/login" style={{
                   display: "inline-block", padding: "17px 52px", borderRadius: 14,
                   fontWeight: 700, fontSize: "1.1rem",
                   background: "linear-gradient(135deg, #7c3aed, #6366f1)",
@@ -848,7 +848,7 @@ export default function LandingPage() {
               <span style={{ fontWeight: 800, fontSize: "1.1rem", color: "#f1f5f9", letterSpacing: "-0.5px" }}>Mindly</span>
             </div>
             <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
-              {[["Entrar", "/login"], ["Começar", "/home"]].map(([label, href]) => (
+              {[["Entrar", "/login"], ["Começar", "/login"]].map(([label, href]) => (
                 <Link key={label} href={href} style={{ color: "#64748b", textDecoration: "none", fontSize: "0.9rem", transition: "color 0.2s" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
                   onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}

@@ -6,13 +6,13 @@ import type { UserProfile } from "@/app/page";
 export default async function HomePage() {
   // Auth server-side — sem race condition, sem useEffect
   const supabase = await createClient().catch(() => null);
-  if (!supabase) redirect("/login");
+  if (!supabase) redirect("/");
 
   const {
     data: { user },
   } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/");
 
   // Busca perfil server-side para evitar flash no cliente
   let profile: UserProfile | null = null;
