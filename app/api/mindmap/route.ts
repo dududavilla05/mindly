@@ -14,10 +14,16 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     // Lê o body ANTES de qualquer verificação de limite
-    const { topic, nodeId, nodeLabel, nodeLevel, explain } = await request.json();
-    if (!topic?.trim()) return NextResponse.json({ error: "Tema obrigatório." }, { status: 400 });
+    const { topic, nodeId, nodeLabel, nodeLevel, explain, fromText, text } = await request.json();
 
-    const isNewMap = !nodeId && !explain;
+    const isFromText = !!fromText && !!text?.trim();
+    const isNewMap   = !nodeId && !explain && !isFromText;
+
+    if (isFromText) {
+      if (!text?.trim()) return NextResponse.json({ error: "Texto obrigatório." }, { status: 400 });
+    } else {
+      if (!topic?.trim()) return NextResponse.json({ error: "Tema obrigatório." }, { status: 400 });
+    }
 
     const { data: profile } = await adminSupabase
       .from("profiles").select("plan, maps_today, last_map_date").eq("id", user.id).single();
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
     const lastDate = profile?.last_map_date ?? null;
     const mapsToday = lastDate === today ? (profile?.maps_today ?? 0) : 0;
 
-    // Para novo mapa: verificar cache antes de chamar a API
+    // Para novo mapa por tema: verificar cache antes de chamar a API
     if (isNewMap) {
       const { data: cachedMap } = await adminSupabase
         .from("mind_maps")
@@ -40,8 +46,10 @@ export async function POST(request: NextRequest) {
       if (cachedMap?.nodes && cachedMap?.edges) {
         return NextResponse.json({ nodes: cachedMap.nodes, edges: cachedMap.edges });
       }
+    }
 
-      // Cache miss: verificar e incrementar limite para não-max
+    // Verificar e incrementar limite diário para novos mapas (tema ou texto)
+    if (isNewMap || isFromText) {
       if (plan !== "max") {
         const limit = LIMITS[plan] ?? 3;
         if (mapsToday >= limit) {
@@ -60,7 +68,40 @@ export async function POST(request: NextRequest) {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
 
     let prompt: string;
-    if (explain && nodeId) {
+    if (isFromText) {
+      prompt = `Analise o texto abaixo e organize as informações em um mapa mental hierárquico.
+Identifique o tema central, os tópicos principais e subtópicos presentes no conteúdo.
+
+TEXTO:
+"""
+${text!.trim().slice(0, 8000)}
+"""
+
+Retorne APENAS JSON puro (sem markdown, sem blocos de código):
+{
+  "nodes": [
+    {"id":"root","label":"Tema Central","level":0,"parentId":null},
+    {"id":"n1","label":"Tópico 1","level":1,"parentId":"root"},
+    {"id":"n2","label":"Tópico 2","level":1,"parentId":"root"},
+    {"id":"n3","label":"Tópico 3","level":1,"parentId":"root"},
+    {"id":"n4","label":"Tópico 4","level":1,"parentId":"root"},
+    {"id":"n5","label":"Tópico 5","level":1,"parentId":"root"},
+    {"id":"n1_1","label":"Sub 1.1","level":2,"parentId":"n1"},
+    {"id":"n1_2","label":"Sub 1.2","level":2,"parentId":"n1"},
+    ... (até 2 sub-nós por tópico, apenas se houver conteúdo relevante)
+  ],
+  "edges": [
+    {"source":"root","target":"n1"},
+    ...
+  ]
+}
+
+Regras:
+- Labels CONCISOS (2-4 palavras) extraídos do texto fornecido, em português
+- IDs: root, n1-n5, n1_1 a n5_2
+- Inclua todos os edges conectando os nós
+- Apenas tópicos realmente presentes no texto`;
+    } else if (explain && nodeId) {
       prompt = `No mapa mental sobre "${topic}", explique o conceito "${nodeLabel}" em 2 frases diretas, didáticas e objetivas em português. Retorne APENAS JSON: {"explanation":"..."}`;
     } else if (!nodeId) {
       prompt = `Gere um mapa mental completo sobre: "${topic}"
@@ -108,7 +149,7 @@ Labels concisos (2-4 palavras), em português, específicos e relevantes.`;
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1200,
+      max_tokens: isFromText ? 2000 : 1200,
       messages: [{ role: "user", content: prompt }],
     });
 

@@ -45,6 +45,10 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   const [error, setError] = useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState("");
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const generate = useCallback(async () => {
@@ -70,6 +74,32 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       setLoading(false);
     }
   }, [topic, loading, onMapGenerated]);
+
+  const handleImportFromText = useCallback(async () => {
+    if (!importText.trim() || importLoading) return;
+    setImportLoading(true);
+    setImportError("");
+    try {
+      const res = await fetch("/api/mindmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromText: true, text: importText.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro ao gerar mapa");
+      const rootNode = (data.nodes as MindMapNode[])?.find(n => n.level === 0);
+      if (rootNode) setTopic(rootNode.label);
+      setNodes(data.nodes ?? []);
+      setEdges(data.edges ?? []);
+      setImportModalOpen(false);
+      setImportText("");
+      onMapGenerated?.();
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Erro ao gerar mapa");
+    } finally {
+      setImportLoading(false);
+    }
+  }, [importText, importLoading, onMapGenerated]);
 
   const handleNodeClick = useCallback(async (node: MindMapNode) => {
     if (expandingId) return;
@@ -286,6 +316,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
   }
 
   return (
+    <>
     <div className="relative flex flex-col h-screen" style={{ background: "#0f0a1e" }}>
       <FirstTimeModal
         storageKey="mindly_seen_mindmap"
@@ -328,6 +359,14 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
             style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
           >
             {loading ? "..." : "Gerar"}
+          </button>
+          <button
+            onClick={() => setImportModalOpen(true)}
+            title="Gerar mapa a partir de texto"
+            className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 shrink-0"
+            style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.3)", color: "#c39dff" }}
+          >
+            📄
           </button>
         </div>
 
@@ -456,5 +495,88 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
         </div>
       )}
     </div>
+
+    {/* ── Modal: Gerar mapa a partir de texto ─────────────────────────────── */}
+    {importModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => { if (!importLoading) { setImportModalOpen(false); setImportText(""); setImportError(""); } }}
+        />
+        {/* Panel */}
+        <div
+          className="relative z-10 w-full max-w-lg rounded-3xl p-6 flex flex-col gap-4 animate-slide-up"
+          style={{
+            background: "rgba(12,8,25,0.98)",
+            border: "1px solid rgba(124,31,255,0.35)",
+            boxShadow: "0 8px 60px rgba(124,31,255,0.25)",
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📄</span>
+            <h2 className="text-white font-bold text-lg leading-tight">
+              Gerar mapa a partir do seu texto
+            </h2>
+          </div>
+
+          {/* Textarea */}
+          <textarea
+            value={importText}
+            onChange={e => setImportText(e.target.value)}
+            placeholder="Cole aqui seu texto, documento, ata de reunião, plano de negócios..."
+            rows={8}
+            disabled={importLoading}
+            className="w-full px-4 py-3 rounded-2xl text-sm text-white placeholder-[#4a3870] outline-none resize-y disabled:opacity-60"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(124,31,255,0.25)",
+              lineHeight: "1.6",
+              minHeight: "160px",
+            }}
+            onFocus={e => { e.currentTarget.style.border = "1px solid rgba(124,31,255,0.6)"; }}
+            onBlur={e => { e.currentTarget.style.border = "1px solid rgba(124,31,255,0.25)"; }}
+          />
+
+          {/* Error */}
+          {importError && (
+            <p className="text-xs text-red-400 -mt-1">{importError}</p>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleImportFromText}
+              disabled={importLoading || !importText.trim()}
+              className="flex-1 py-3 rounded-2xl font-bold text-sm text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: "linear-gradient(135deg, #7c1fff, #a66aff)",
+                boxShadow: "0 4px 20px rgba(124,31,255,0.3)",
+              }}
+            >
+              {importLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
+                    <path d="M12 3a9 9 0 019 9"/>
+                  </svg>
+                  Gerando mapa...
+                </span>
+              ) : "Gerar Mapa"}
+            </button>
+            <button
+              onClick={() => { setImportModalOpen(false); setImportText(""); setImportError(""); }}
+              disabled={importLoading}
+              className="px-5 py-3 rounded-2xl font-semibold text-sm text-[#a78bca] hover:text-white transition-colors disabled:opacity-50"
+              style={{ background: "rgba(124,31,255,0.1)", border: "1px solid rgba(124,31,255,0.2)" }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
