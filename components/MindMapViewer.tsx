@@ -507,6 +507,7 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
 
         <style>{`
           @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes dotFade { 0%, 80%, 100% { opacity: 0.15; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
         `}</style>
       </svg>
 
@@ -550,12 +551,21 @@ export default function MindMapViewer({ nodes, edges, onNodeClick, expandingId, 
           {/* Explanation */}
           <div className="px-5 pb-3 min-h-[3.5rem]">
             {loadingExpl ? (
-              <div className="flex items-center gap-2 text-xs text-[#7a5faa]">
-                <svg className="animate-spin flex-shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
-                  <path d="M12 3a9 9 0 019 9" />
-                </svg>
-                Gerando explicação...
+              <div className="flex items-center gap-1.5" aria-label="Gerando explicação">
+                {[0, 1, 2].map(i => (
+                  <span
+                    key={i}
+                    style={{
+                      display: "inline-block",
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: "#7c3aed",
+                      animation: "dotFade 1.2s ease-in-out infinite",
+                      animationDelay: `${i * 0.2}s`,
+                    }}
+                  />
+                ))}
               </div>
             ) : explanation ? (
               <p className="text-sm text-[#c4a8e8] leading-relaxed">{explanation}</p>
