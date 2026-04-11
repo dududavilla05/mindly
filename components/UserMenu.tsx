@@ -302,24 +302,13 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
 
       {/* Modal de export */}
       {exportState !== "idle" && (
-        <>
-        {/* Backdrop */}
         <div
-          className="fixed inset-0 z-[100]"
-          style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
           onClick={exportState === "confirm" ? closeExportModal : undefined}
-        />
-        {/* Modal card */}
+        >
         <div
-          className="fixed z-[101] w-[calc(100%-2rem)] max-w-sm rounded-2xl p-6 flex flex-col gap-4"
-          style={{
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            background: "rgba(12,8,25,0.98)",
-            border: "1px solid rgba(124,31,255,0.3)",
-            boxShadow: "0 20px 60px rgba(124,31,255,0.25)",
-          }}
+          style={{ background: "#1a1a2e", border: "1px solid #7c3aed", borderRadius: "12px", padding: "24px", maxWidth: "400px", width: "90%" }}
+          onClick={e => e.stopPropagation()}
         >
             {exportState === "confirm" && (
               <>
@@ -434,7 +423,7 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
               </>
             )}
           </div>
-        </>
+        </div>
       )}
     </>
   );
