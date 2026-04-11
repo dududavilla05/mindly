@@ -302,6 +302,7 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
 
       {/* Modal de export */}
       {exportState !== "idle" && (
+        <>
         {/* Backdrop */}
         <div
           className="fixed inset-0 z-[100]"
@@ -433,6 +434,7 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
               </>
             )}
           </div>
+        </>
       )}
     </>
   );
