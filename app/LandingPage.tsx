@@ -525,7 +525,9 @@ export default function LandingPage() {
 
           <Reveal>
             <div style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(99,102,241,0.08))", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 22, padding: "44px 40px", textAlign: "center" }}>
-              <div style={{ fontSize: "2.2rem", marginBottom: 14 }}>✦</div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                <Logo size={60} />
+              </div>
               <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#f1f5f9", margin: "0 0 12px", letterSpacing: "-0.5px" }}>O Mindly resolve tudo isso</h3>
               <p style={{ color: "#94a3b8", fontSize: "1.05rem", lineHeight: 1.75, maxWidth: 580, margin: "0 auto" }}>
                 IA que cria conteúdo <strong style={{ color: "#a78bfa" }}>único para você</strong>, na hora, sobre qualquer tema. Com ferramentas de prática que garantem que o conhecimento realmente fique.
