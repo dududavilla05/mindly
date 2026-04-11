@@ -320,6 +320,17 @@ Gere o JSON completo conforme o formato especificado, com conteúdo suficiente p
       }
 
       console.log("[generate-lesson] parsed OK, title:", (lessonData as Record<string, unknown>)?.title);
+
+      // Fire-and-forget: registrar uso da API
+      if (user) {
+        void adminSupabase.from("api_usage").insert({
+          user_id: user.id,
+          feature: isJourney ? "lesson_journey" : imageBase64 ? "lesson_image" : "lesson",
+          input_tokens: response.usage.input_tokens,
+          output_tokens: response.usage.output_tokens,
+          custo_usd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+        }).then(({ error: e }) => { if (e) console.error("[api_usage lesson]", e); });
+      }
     }
 
     // Salvar no histórico do usuário (sempre, mesmo vindo do cache)

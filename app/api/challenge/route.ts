@@ -133,6 +133,15 @@ Regras obrigatórias:
       .from("challenge_cache")
       .insert({ topic: topic.trim(), difficulty, questions: data.questions });
 
+    // Fire-and-forget: registrar uso da API
+    void admin.from("api_usage").insert({
+      user_id: user.id,
+      feature: "challenge",
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      custo_usd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+    }).then(({ error: e }) => { if (e) console.error("[api_usage challenge]", e); });
+
     // Incrementar contador de desafios do usuário
     await admin.from("profiles").update({
       challenges_today: challengesToday + 1,

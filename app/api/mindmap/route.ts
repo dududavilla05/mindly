@@ -160,6 +160,16 @@ Labels concisos (2-4 palavras), em português, específicos e relevantes.`;
     if (!jsonMatch) throw new Error("JSON não encontrado");
 
     const data = JSON.parse(jsonMatch[0]);
+
+    // Fire-and-forget: registrar uso da API
+    void adminSupabase.from("api_usage").insert({
+      user_id: user.id,
+      feature: isFromText ? "mindmap_text" : explain ? "mindmap_explain" : !nodeId ? "mindmap_new" : "mindmap_expand",
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      custo_usd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+    }).then(({ error: e }) => { if (e) console.error("[api_usage mindmap]", e); });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("[mindmap error]", error);

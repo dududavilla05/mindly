@@ -17,6 +17,8 @@ interface UserMenuProps {
   onSignOut: () => void;
 }
 
+const ADMIN_ID = "5e6f4207-8242-41ce-9fdd-092d64237810";
+
 const PLAN_LABELS: Record<string, string> = {
   gratis: "Grátis",
   pro: "Pro",
@@ -46,6 +48,8 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
   const limit = PLAN_LIMIT[plan];
   const planLabel = PLAN_LABELS[plan];
   const hasStreak = plan === "pro" || plan === "max";
+
+  const isAdmin = user.id === ADMIN_ID;
 
   const planBadgeStyle =
     plan === "max"
@@ -194,6 +198,22 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
                 Fazer upgrade para Pro
+              </Link>
+            )}
+
+            {/* Monitor de Custos (apenas admin) */}
+            {isAdmin && (
+              <Link
+                href="/admin/costs"
+                onClick={() => setOpen(false)}
+                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
+                style={{
+                  background: "rgba(251,191,36,0.06)",
+                  border: "1px solid rgba(251,191,36,0.15)",
+                  color: "#fbbf24",
+                }}
+              >
+                📊 Monitor de Custos
               </Link>
             )}
 

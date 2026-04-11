@@ -70,6 +70,15 @@ ${lesson.curiosity ? `Curiosidade: ${lesson.curiosity}` : ""}
       throw new Error("Resposta inválida da IA");
     }
 
+    // Fire-and-forget: registrar uso da API
+    void adminSupabase.from("api_usage").insert({
+      user_id: user.id,
+      feature: "mentor",
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      custo_usd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+    }).then(({ error: e }) => { if (e) console.error("[api_usage mentor]", e); });
+
     return NextResponse.json({ reply: textContent.text });
   } catch (error) {
     console.error("[mentor error]", error);

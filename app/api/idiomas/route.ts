@@ -117,6 +117,15 @@ PEDAGOGIA: Adapte vocabulário e gramática ao nível ${level}. Proponha exercí
       throw new Error("Resposta inválida da IA");
     }
 
+    // Fire-and-forget: registrar uso da API
+    void admin.from("api_usage").insert({
+      user_id: user.id,
+      feature: "idiomas",
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      custo_usd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+    }).then(({ error: e }) => { if (e) console.error("[api_usage idiomas]", e); });
+
     // Salva no cache se for um atalho fixo
     if (shortcutKey) {
       const today = new Date().toISOString().slice(0, 10);

@@ -65,6 +65,15 @@ Regras:
     const jsonMatch = text.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("JSON não encontrado");
 
+    // Fire-and-forget: registrar uso da API
+    void adminSupabase.from("api_usage").insert({
+      user_id: user.id,
+      feature: "journey",
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      custo_usd: response.usage.input_tokens * 0.000003 + response.usage.output_tokens * 0.000015,
+    }).then(({ error: e }) => { if (e) console.error("[api_usage journey]", e); });
+
     const data = JSON.parse(jsonMatch[0]);
     return NextResponse.json({
       title: data.title ?? objective,
