@@ -106,6 +106,16 @@ export default function ChallengeMode({ onBack }: ChallengeModeProps) {
       if (!res.ok) throw new Error(data.error ?? "Erro ao gerar questões");
       if (!Array.isArray(data.questions) || !data.questions.length)
         throw new Error("Nenhuma questão foi gerada");
+      // Validate structure of each question
+      const validStructure = data.questions.every(
+        (q: unknown) =>
+          q !== null &&
+          typeof q === "object" &&
+          typeof (q as Record<string, unknown>).question === "string" &&
+          Array.isArray((q as Record<string, unknown>).options) &&
+          typeof (q as Record<string, unknown>).correct === "string"
+      );
+      if (!validStructure) throw new Error("Formato de questões inválido");
       setQuestions(data.questions);
       setAnswers(new Array(data.questions.length).fill(null));
       setCurrentIndex(0);

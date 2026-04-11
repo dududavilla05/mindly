@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface LanguageMessage {
   role: "user" | "assistant";
@@ -21,6 +22,11 @@ async function getAuthUser(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!checkRateLimit(ip, 60, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Muitas requisições. Tente novamente em breve." }, { status: 429 });
+  }
+
   try {
     const user = await getAuthUser(request);
     if (!user) {

@@ -16,6 +16,17 @@ interface LessonScreenProps {
   journeyContext?: { day: number; journeyTitle: string; totalDays: number } | null;
 }
 
+function escapeHtml(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function nl2br(s: string): string {
+  return escapeHtml(s).replace(/\n/g, "<br>");
+}
+
 async function exportToPDF(lesson: LessonContent, subject: string) {
   const { jsPDF } = await import("jspdf");
   const html2canvas = (await import("html2canvas")).default;
@@ -45,37 +56,37 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
       <div>
         <span style="background:#EDE9FE;color:#6D28D9;font-size:9px;font-weight:700;
           letter-spacing:2px;padding:3px 12px;border-radius:20px;text-transform:uppercase;">
-          ${lesson.category}
+          ${escapeHtml(lesson.category)}
         </span>
       </div>
 
       <h1 style="font-size:22px;font-weight:900;color:#1e1432;margin:0;line-height:1.2;">
-        ${lesson.title}
+        ${escapeHtml(lesson.title)}
       </h1>
 
       ${subject && subject !== "Imagem enviada"
-        ? `<p style="font-size:12px;color:#7C6A9A;margin:0;">Assunto: &ldquo;${subject}&rdquo;</p>`
+        ? `<p style="font-size:12px;color:#7C6A9A;margin:0;">Assunto: &ldquo;${escapeHtml(subject)}&rdquo;</p>`
         : ""}
 
       <hr style="border:none;border-top:1px solid #DDD6FE;margin:0;">
 
       <p style="font-size:13px;color:#2d1f50;line-height:1.55;margin:0;">
-        ${lesson.introduction}
+        ${nl2br(lesson.introduction)}
       </p>
 
       <div style="background:#F5F3FF;border-left:4px solid #6D28D9;border-radius:0 6px 6px 0;padding:12px 16px;">
         <div style="font-size:9px;font-weight:700;color:#6D28D9;letter-spacing:2px;
-          text-transform:uppercase;margin-bottom:5px;">${lesson.highlight.label}</div>
+          text-transform:uppercase;margin-bottom:5px;">${escapeHtml(lesson.highlight.label)}</div>
         <div style="font-size:13px;font-weight:700;color:#1e1432;line-height:1.4;">
-          ${lesson.highlight.text}
+          ${nl2br(lesson.highlight.text)}
         </div>
       </div>
 
       <div style="border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;">
         <div style="font-size:9px;font-weight:700;color:#6D28D9;letter-spacing:2px;
-          text-transform:uppercase;margin-bottom:8px;">${lesson.practicalExample.title}</div>
+          text-transform:uppercase;margin-bottom:8px;">${escapeHtml(lesson.practicalExample.title)}</div>
         <p style="font-size:13px;color:#2d1f50;line-height:1.55;margin:0;">
-          ${lesson.practicalExample.content}
+          ${nl2br(lesson.practicalExample.content)}
         </p>
       </div>
 
@@ -90,7 +101,7 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
                 line-height:22px;text-align:center;">
                 ${i + 1}
               </div>
-              <p style="font-size:13px;color:#2d1f50;line-height:1.5;margin:0;padding-top:2px;">${a}</p>
+              <p style="font-size:13px;color:#2d1f50;line-height:1.5;margin:0;padding-top:2px;">${nl2br(a)}</p>
             </div>
           `).join("")}
         </div>
@@ -101,7 +112,7 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
           <div style="font-size:9px;font-weight:700;color:#7C6A9A;letter-spacing:2px;
             text-transform:uppercase;margin-bottom:5px;">Voce Sabia?</div>
           <p style="font-size:12px;color:#7C6A9A;line-height:1.55;margin:0;font-style:italic;">
-            ${lesson.curiosity}
+            ${nl2br(lesson.curiosity)}
           </p>
         </div>
       ` : ""}

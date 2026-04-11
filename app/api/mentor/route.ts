@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { LessonContent } from "@/types/lesson";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface MentorMessage {
   role: "user" | "assistant";
@@ -10,6 +11,11 @@ interface MentorMessage {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!checkRateLimit(ip, 60, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Muitas requisições. Tente novamente em breve." }, { status: 429 });
+  }
+
   try {
     // Autenticação
     const supabase = await createClient();

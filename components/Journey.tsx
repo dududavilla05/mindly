@@ -47,9 +47,10 @@ const DURATION_OPTIONS: { value: 7 | 15 | 30; label: string; desc: string; emoji
 ];
 
 function calcStreak(completedList: number[], totalDays: number): number {
+  const done = new Set(completedList);
   let s = 0;
   for (let d = 1; d <= totalDays; d++) {
-    if (completedList.includes(d)) s++;
+    if (done.has(d)) s++;
     else break;
   }
   return s;
@@ -70,7 +71,7 @@ export default function Journey({
   );
   const [journey, setJourney] = useState<JourneyState | null>(() => {
     if (!initialJourney) return null;
-    const list = initialJourney.completed_day_list ?? [];
+    const list = Array.isArray(initialJourney.completed_day_list) ? initialJourney.completed_day_list : [];
     console.log("[Journey] init id=%s completed_day_list=%d/%d",
       initialJourney.id, list.length, initialJourney.duration_days);
     return {
@@ -97,8 +98,13 @@ export default function Journey({
       .eq("id", journeyId)
       .single()
       .then(({ data, error }) => {
-        if (data && !error) {
-          const list = data.completed_day_list ?? [];
+        if (error) {
+          console.error("[Journey] Erro ao carregar jornada:", error);
+          setError("Não foi possível carregar sua jornada. Tente novamente.");
+          return;
+        }
+        if (data) {
+          const list = Array.isArray(data.completed_day_list) ? data.completed_day_list : [];
           console.log("[Journey] loaded id=%s completed_day_list=%d/%d completed_days=%d",
             data.id, list.length, data.duration_days, data.completed_days);
           setJourney({
@@ -222,11 +228,21 @@ export default function Journey({
     }
 
     if (journey.id && supabase) {
+      const prevList  = journey.completed_day_list;
       const { error: updErr } = await supabase
         .from("journeys")
         .update({ completed_days: newCount, streak: newStreak, completed_day_list: newList })
         .eq("id", journey.id);
-      if (updErr) console.error("[Journey] Erro ao atualizar progresso:", updErr);
+      if (updErr) {
+        console.error("[Journey] Erro ao atualizar progresso — revertendo:", updErr);
+        // Rollback optimistic update
+        setJourney(prev => prev ? {
+          ...prev,
+          completed_day_list: prevList,
+          completed_days: prevList.length,
+          streak: calcStreak(prevList, prev.duration_days),
+        } : prev);
+      }
     }
   }, [journey, supabase]);
 
