@@ -24,10 +24,12 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
 
   const el = document.createElement("div");
   // position:fixed keeps the element out of document layout, so scrollWidth
-  // stays normal and html2canvas doesn't allocate a ~20 000px-wide canvas
-  // (which is what caused the browser to freeze / screen to go dark).
+  // stays normal and html2canvas doesn't allocate a ~20 000px-wide canvas.
+  // top:100vh keeps the element below the viewport so it doesn't share the
+  // GPU compositing layer with the page's backdrop-filter elements, which
+  // previously caused a persistent dark-screen artifact after export.
   el.style.cssText = `
-    position:fixed; left:-9999px; top:0;
+    position:fixed; left:0; top:100vh;
     width:794px; background:#ffffff;
     font-family:Arial,Helvetica,sans-serif; color:#1e1432;
   `;
@@ -142,6 +144,9 @@ async function exportToPDF(lesson: LessonContent, subject: string) {
     doc.save(`mindly-${slug}.pdf`);
   } finally {
     document.body.removeChild(el);
+    // Force a layout reflow so the browser repaints immediately after
+    // html2canvas removes its hidden iframe, clearing any stale compositor state.
+    void document.body.offsetHeight;
   }
 }
 
