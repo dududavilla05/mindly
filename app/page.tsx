@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import LandingPage from "./LandingPage";
 
 // Exporta o tipo para compatibilidade com HomeScreen e HomeClient
 export interface UserProfile {
@@ -25,5 +26,5 @@ export default async function RootPage() {
     if (user) redirect("/home");
   }
 
-  redirect("/login");
+  return <LandingPage />;
 }
