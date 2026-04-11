@@ -12,7 +12,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://images.pexels.com",
+      "img-src 'self' data: blob: https://images.pexels.com https://i.pravatar.cc",
       "media-src 'self'",
       "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://api.stripe.com https://api.pexels.com",
       "frame-src 'none'",
@@ -21,6 +21,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "i.pravatar.cc" },
+    ],
+  },
   env: {
     PEXELS_API_KEY: process.env.PEXELS_API_KEY,
   },

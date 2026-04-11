@@ -217,34 +217,19 @@ function LaptopMockup() {
         background: "#0d0b1e", border: "2px solid rgba(124,58,237,0.6)",
         borderRadius: "14px 14px 0 0", padding: "12px",
         boxShadow: "0 0 40px rgba(124,58,237,0.25)",
-        minHeight: 220,
       }}>
         {/* Dots */}
         <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
           {["#ef4444","#f59e0b","#22c55e"].map((c,i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c, opacity: 0.7 }} />)}
         </div>
-        {/* Lesson content simulation */}
-        <div style={{ background: "rgba(124,58,237,0.08)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-          <div style={{ height: 8, width: "55%", background: "rgba(167,139,250,0.5)", borderRadius: 4, marginBottom: 6 }} />
-          <div style={{ height: 6, width: "85%", background: "rgba(255,255,255,0.12)", borderRadius: 4, marginBottom: 4 }} />
-          <div style={{ height: 6, width: "70%", background: "rgba(255,255,255,0.12)", borderRadius: 4, marginBottom: 4 }} />
-          <div style={{ height: 6, width: "60%", background: "rgba(255,255,255,0.12)", borderRadius: 4 }} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-          {[["💡","Destaque","rgba(250,204,21,0.1)","rgba(250,204,21,0.3)"],["🎯","Exemplo","rgba(34,197,94,0.1)","rgba(34,197,94,0.3)"]].map(([icon,label,bg,border],i) => (
-            <div key={i} style={{ background: bg as string, border: `1px solid ${border}`, borderRadius: 8, padding: "8px 10px" }}>
-              <div style={{ fontSize: "0.9rem", marginBottom: 4 }}>{icon}</div>
-              <div style={{ height: 5, width: "70%", background: "rgba(255,255,255,0.2)", borderRadius: 3, marginBottom: 3 }} />
-              <div style={{ height: 5, width: "50%", background: "rgba(255,255,255,0.12)", borderRadius: 3 }} />
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop: 8, background: "rgba(124,58,237,0.12)", borderRadius: 8, padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ height: 5, width: 80, background: "rgba(167,139,250,0.4)", borderRadius: 3, marginBottom: 3 }} />
-            <div style={{ height: 5, width: 55, background: "rgba(255,255,255,0.1)", borderRadius: 3 }} />
-          </div>
-          <div style={{ background: "linear-gradient(135deg,#7c3aed,#6366f1)", borderRadius: 6, padding: "4px 10px", fontSize: "0.7rem", color: "#fff", fontWeight: 600 }}>Desafio</div>
+        {/* Screenshot */}
+        <div style={{ position: "relative", width: "100%", height: 210, borderRadius: 8, overflow: "hidden" }}>
+          <Image
+            src="/screenshots/mindly-ruby.vercel.app_home.png"
+            alt="Mindly app – lições personalizadas"
+            fill
+            style={{ objectFit: "cover", objectPosition: "top" }}
+          />
         </div>
       </div>
       {/* Stand */}
@@ -255,6 +240,8 @@ function LaptopMockup() {
 }
 
 function PhoneMockup({ type }: { type: "map" | "challenge" }) {
+  const src = type === "map" ? "/screenshots/Mapa.png" : "/screenshots/desafio.png";
+  const alt = type === "map" ? "Mindly app – mapas mentais" : "Mindly app – modo desafio";
   return (
     <div style={{ width: 180, margin: "0 auto" }}>
       <div style={{
@@ -262,64 +249,21 @@ function PhoneMockup({ type }: { type: "map" | "challenge" }) {
         border: "2px solid rgba(124,58,237,0.5)",
         borderRadius: 28, padding: "20px 12px 16px",
         boxShadow: "0 0 30px rgba(124,58,237,0.18)",
-        minHeight: 300, display: "flex", flexDirection: "column",
+        display: "flex", flexDirection: "column",
       }}>
         {/* Notch */}
-        <div style={{ width: 56, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 10, margin: "0 auto 14px" }} />
-
-        {type === "map" ? (
-          /* Mind map simulation */
-          <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 56, height: 26, background: "linear-gradient(135deg,#7c3aed,#6366f1)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ height: 5, width: 36, background: "rgba(255,255,255,0.6)", borderRadius: 3 }} />
-            </div>
-            {[[-56,-36],[56,-36],[-56,28],[56,28]].map(([dx,dy],i) => (
-              <div key={i} style={{
-                position: "absolute",
-                left: `calc(50% + ${dx}px)`, top: `calc(50% + ${dy}px)`,
-                transform: "translate(-50%,-50%)",
-                width: 44, height: 20,
-                background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.4)",
-                borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <div style={{ height: 4, width: 28, background: "rgba(255,255,255,0.2)", borderRadius: 2 }} />
-              </div>
-            ))}
-            {/* Connector lines */}
-            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}>
-              {[[-56,-36],[56,-36],[-56,28],[56,28]].map(([dx,dy],i) => (
-                <line key={i} x1="50%" y1="50%" x2={`calc(50% + ${dx}px)`} y2={`calc(50% + ${dy}px)`} stroke="rgba(124,58,237,0.35)" strokeWidth="1" />
-              ))}
-            </svg>
-          </div>
-        ) : (
-          /* Challenge simulation */
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ background: "rgba(124,58,237,0.12)", borderRadius: 8, padding: "8px 10px" }}>
-              <div style={{ height: 5, width: "80%", background: "rgba(255,255,255,0.2)", borderRadius: 3, marginBottom: 4 }} />
-              <div style={{ height: 5, width: "60%", background: "rgba(255,255,255,0.12)", borderRadius: 3 }} />
-            </div>
-            {[true, false, false, false].map((correct, i) => (
-              <div key={i} style={{
-                background: correct ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${correct ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.08)"}`,
-                borderRadius: 7, padding: "7px 10px", display: "flex", alignItems: "center", gap: 7,
-              }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${correct ? "#22c55e" : "rgba(255,255,255,0.2)"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {correct && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />}
-                </div>
-                <div style={{ height: 4, width: "60%", background: "rgba(255,255,255,0.15)", borderRadius: 2 }} />
-              </div>
-            ))}
-            <div style={{ background: "linear-gradient(135deg,rgba(124,58,237,0.3),rgba(99,102,241,0.2))", borderRadius: 8, padding: "8px", textAlign: "center", marginTop: 4 }}>
-              <div style={{ height: 5, width: "50%", background: "rgba(167,139,250,0.5)", borderRadius: 3, margin: "0 auto 3px" }} />
-              <div style={{ height: 4, width: "35%", background: "rgba(255,255,255,0.15)", borderRadius: 2, margin: "0 auto" }} />
-            </div>
-          </div>
-        )}
-
+        <div style={{ width: 56, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 10, margin: "0 auto 14px", flexShrink: 0 }} />
+        {/* Screenshot */}
+        <div style={{ position: "relative", flex: 1, minHeight: 260, borderRadius: 12, overflow: "hidden" }}>
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            style={{ objectFit: "cover", objectPosition: "top" }}
+          />
+        </div>
         {/* Home bar */}
-        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.15)", borderRadius: 4, margin: "12px auto 0" }} />
+        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.15)", borderRadius: 4, margin: "12px auto 0", flexShrink: 0 }} />
       </div>
     </div>
   );
@@ -361,9 +305,9 @@ export default function LandingPage() {
   ];
 
   const testimonials = [
-    { name: "Ana C.", role: "Empreendedora", text: "Aprendi mais sobre finanças em 2 semanas com o Mindly do que em um semestre de faculdade. As lições são incríveis." },
-    { name: "Rafael M.", role: "Estudante de Direito", text: "O Modo Desafio me ajudou a fixar conceitos jurídicos complexos. Minha nota na prova subiu muito." },
-    { name: "Juliana P.", role: "Designer UX", text: "Uso o recurso de idiomas todo dia para praticar inglês. O professor de IA é paciente e corrijo meus erros na hora." },
+    { name: "Ana C.", role: "Empreendedora", avatar: "https://i.pravatar.cc/150?img=1", text: "Aprendi mais sobre finanças em 2 semanas com o Mindly do que em um semestre de faculdade. As lições são incríveis." },
+    { name: "Rafael M.", role: "Estudante de Direito", avatar: "https://i.pravatar.cc/150?img=5", text: "O Modo Desafio me ajudou a fixar conceitos jurídicos complexos. Minha nota na prova subiu muito." },
+    { name: "Juliana P.", role: "Designer UX", avatar: "https://i.pravatar.cc/150?img=9", text: "Uso o recurso de idiomas todo dia para praticar inglês. O professor de IA é paciente e corrijo meus erros na hora." },
   ];
 
   const faqs = [
@@ -764,12 +708,13 @@ export default function LandingPage() {
                   </div>
                   <p style={{ color: "#94a3b8", lineHeight: 1.72, margin: "0 0 20px", fontSize: "0.97rem", fontStyle: "italic" }}>&ldquo;{t.text}&rdquo;</p>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: "50%",
-                      background: "linear-gradient(135deg, #7c3aed, #6366f1)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "1rem", fontWeight: 700, color: "#fff", flexShrink: 0,
-                    }}>{t.name[0]}</div>
+                    <Image
+                      src={t.avatar}
+                      alt={t.name}
+                      width={40}
+                      height={40}
+                      style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                    />
                     <div>
                       <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: "0.95rem" }}>{t.name}</div>
                       <div style={{ color: "#64748b", fontSize: "0.82rem" }}>{t.role}</div>
