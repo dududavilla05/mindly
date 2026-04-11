@@ -31,8 +31,11 @@ const PLAN_LIMIT: Record<string, number | null> = {
   max: null,
 };
 
+type ExportState = "idle" | "confirm" | "loading" | "done" | "error";
+
 export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
   const [open, setOpen] = useState(false);
+  const [exportState, setExportState] = useState<ExportState>("idle");
   const supabase = createClient();
 
   const handleSignOut = async () => {
@@ -41,6 +44,37 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
     setOpen(false);
   };
 
+  const handleExportClick = () => {
+    setOpen(false);
+    setExportState("confirm");
+  };
+
+  const handleExportConfirm = async () => {
+    setExportState("loading");
+    try {
+      const res = await fetch("/api/export-data");
+      if (!res.ok) throw new Error("Erro na requisição");
+      const data = await res.json();
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `mindly_meus_dados_${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setExportState("done");
+    } catch {
+      setExportState("error");
+    }
+  };
+
+  const closeExportModal = () => setExportState("idle");
+
   const initial = user.email?.[0]?.toUpperCase() ?? "U";
   const plan = profile?.plan ?? "gratis";
   const lessonsToday = profile?.lessons_today ?? 0;
@@ -48,7 +82,6 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
   const limit = PLAN_LIMIT[plan];
   const planLabel = PLAN_LABELS[plan];
   const hasStreak = plan === "pro" || plan === "max";
-
   const isAdmin = user.id === ADMIN_ID;
 
   const planBadgeStyle =
@@ -59,198 +92,343 @@ export default function UserMenu({ user, profile, onSignOut }: UserMenuProps) {
       : { background: "rgba(255,255,255,0.08)", color: "#a78bca", border: "1px solid rgba(255,255,255,0.1)" };
 
   return (
-    <div className="relative">
-      {/* Botão do avatar */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
-        style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.2)" }}
-      >
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-          style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
+    <>
+      <div className="relative">
+        {/* Botão do avatar */}
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
+          style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.2)" }}
         >
-          {initial}
-        </div>
-        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={planBadgeStyle}>
-          {planLabel}
-        </span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#6b4fa0"
-          strokeWidth="2.5"
-          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-
-      {open && (
-        <>
-          {/* Overlay para fechar */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-
-          {/* Dropdown */}
           <div
-            className="absolute right-0 top-12 z-50 w-68 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in"
-            style={{
-              background: "rgba(12,8,25,0.98)",
-              border: "1px solid rgba(124,31,255,0.3)",
-              boxShadow: "0 8px 30px rgba(124,31,255,0.2)",
-            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+            style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
           >
-            {/* Usuário */}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0"
-                style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
-              >
-                {initial}
-              </div>
-              <div className="min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{user.email}</p>
-                <p className="text-[#a78bca] text-xs">Plano {planLabel}</p>
-              </div>
-            </div>
+            {initial}
+          </div>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={planBadgeStyle}>
+            {planLabel}
+          </span>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#6b4fa0"
+            strokeWidth="2.5"
+            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
 
-            {/* Streak */}
+        {open && (
+          <>
+            {/* Overlay para fechar */}
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+
+            {/* Dropdown */}
             <div
-              className="rounded-xl p-3 flex items-center justify-between"
-              style={{ background: "rgba(124,31,255,0.08)", border: "1px solid rgba(124,31,255,0.15)" }}
+              className="absolute right-0 top-12 z-50 w-68 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in"
+              style={{
+                background: "rgba(12,8,25,0.98)",
+                border: "1px solid rgba(124,31,255,0.3)",
+                boxShadow: "0 8px 30px rgba(124,31,255,0.2)",
+              }}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🔥</span>
-                <div>
-                  <p className="text-xs font-semibold text-white">
-                    {hasStreak ? `${streakDays} ${streakDays === 1 ? "dia" : "dias"} seguidos` : "Streak"}
-                  </p>
-                  <p className="text-[10px] text-[#7a6a9a]">
-                    {hasStreak ? "Continue assim!" : "Disponível no Pro"}
-                  </p>
+              {/* Usuário */}
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0"
+                  style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
+                >
+                  {initial}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-sm font-semibold truncate">{user.email}</p>
+                  <p className="text-[#a78bca] text-xs">Plano {planLabel}</p>
                 </div>
               </div>
-              {!hasStreak ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c3d8a" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-              ) : (
-                <span
-                  className="text-lg font-black"
-                  style={{ color: streakDays >= 7 ? "#f59e0b" : "#a78bfa" }}
-                >
-                  {streakDays}
-                </span>
-              )}
-            </div>
 
-            {/* Contador de lições (apenas plano grátis) */}
-            {limit !== null && (
+              {/* Streak */}
               <div
-                className="rounded-xl p-3"
+                className="rounded-xl p-3 flex items-center justify-between"
                 style={{ background: "rgba(124,31,255,0.08)", border: "1px solid rgba(124,31,255,0.15)" }}
               >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-[#a78bca]">Lições hoje</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🔥</span>
+                  <div>
+                    <p className="text-xs font-semibold text-white">
+                      {hasStreak ? `${streakDays} ${streakDays === 1 ? "dia" : "dias"} seguidos` : "Streak"}
+                    </p>
+                    <p className="text-[10px] text-[#7a6a9a]">
+                      {hasStreak ? "Continue assim!" : "Disponível no Pro"}
+                    </p>
+                  </div>
+                </div>
+                {!hasStreak ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c3d8a" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                ) : (
                   <span
-                    className="text-xs font-bold"
-                    style={{ color: lessonsToday >= limit ? "#ef4444" : "#c39dff" }}
+                    className="text-lg font-black"
+                    style={{ color: streakDays >= 7 ? "#f59e0b" : "#a78bfa" }}
                   >
-                    {lessonsToday}/{limit}
+                    {streakDays}
                   </span>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min((lessonsToday / limit) * 100, 100)}%`,
-                      background:
-                        lessonsToday >= limit
-                          ? "#ef4444"
-                          : lessonsToday >= limit * 0.8
-                          ? "linear-gradient(90deg, #f59e0b, #ef4444)"
-                          : "linear-gradient(90deg, #7c1fff, #a66aff)",
-                    }}
-                  />
-                </div>
-                {lessonsToday >= limit && (
-                  <p className="text-xs text-red-400 mt-1.5">Limite atingido. Volta amanhã!</p>
                 )}
               </div>
-            )}
 
-            {/* Upgrade (plano grátis) */}
-            {plan === "gratis" && (
-              <Link
-                href="/planos"
-                onClick={() => setOpen(false)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02]"
-                style={{
-                  background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.2))",
-                  border: "1px solid rgba(124,31,255,0.35)",
-                  color: "#c39dff",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-                Fazer upgrade para Pro
-              </Link>
-            )}
+              {/* Contador de lições (apenas plano grátis) */}
+              {limit !== null && (
+                <div
+                  className="rounded-xl p-3"
+                  style={{ background: "rgba(124,31,255,0.08)", border: "1px solid rgba(124,31,255,0.15)" }}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-[#a78bca]">Lições hoje</span>
+                    <span
+                      className="text-xs font-bold"
+                      style={{ color: lessonsToday >= limit ? "#ef4444" : "#c39dff" }}
+                    >
+                      {lessonsToday}/{limit}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min((lessonsToday / limit) * 100, 100)}%`,
+                        background:
+                          lessonsToday >= limit
+                            ? "#ef4444"
+                            : lessonsToday >= limit * 0.8
+                            ? "linear-gradient(90deg, #f59e0b, #ef4444)"
+                            : "linear-gradient(90deg, #7c1fff, #a66aff)",
+                      }}
+                    />
+                  </div>
+                  {lessonsToday >= limit && (
+                    <p className="text-xs text-red-400 mt-1.5">Limite atingido. Volta amanhã!</p>
+                  )}
+                </div>
+              )}
 
-            {/* Monitor de Custos (apenas admin) */}
-            {isAdmin && (
+              {/* Upgrade (plano grátis) */}
+              {plan === "gratis" && (
+                <Link
+                  href="/planos"
+                  onClick={() => setOpen(false)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02]"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(124,31,255,0.3), rgba(166,106,255,0.2))",
+                    border: "1px solid rgba(124,31,255,0.35)",
+                    color: "#c39dff",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Fazer upgrade para Pro
+                </Link>
+              )}
+
+              {/* Monitor de Custos (apenas admin) */}
+              {isAdmin && (
+                <Link
+                  href="/admin/costs"
+                  onClick={() => setOpen(false)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
+                  style={{
+                    background: "rgba(251,191,36,0.06)",
+                    border: "1px solid rgba(251,191,36,0.15)",
+                    color: "#fbbf24",
+                  }}
+                >
+                  📊 Monitor de Custos
+                </Link>
+              )}
+
+              {/* Ranking */}
               <Link
-                href="/admin/costs"
+                href="/ranking"
                 onClick={() => setOpen(false)}
                 className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
                 style={{
-                  background: "rgba(251,191,36,0.06)",
-                  border: "1px solid rgba(251,191,36,0.15)",
-                  color: "#fbbf24",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#a78bca",
                 }}
               >
-                📊 Monitor de Custos
+                🏆 Ranking semanal
               </Link>
+
+              {/* Exportar dados (LGPD) */}
+              <button
+                onClick={handleExportClick}
+                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#a78bca",
+                }}
+              >
+                📦 Exportar meus dados
+              </button>
+
+              {/* Sair */}
+              <button
+                onClick={handleSignOut}
+                className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#6b4fa0",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Sair da conta
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Modal de export */}
+      {exportState !== "idle" && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4"
+            style={{
+              background: "rgba(12,8,25,0.98)",
+              border: "1px solid rgba(124,31,255,0.3)",
+              boxShadow: "0 20px 60px rgba(124,31,255,0.25)",
+            }}
+          >
+            {exportState === "confirm" && (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">📦</span>
+                  <h2 className="text-white font-bold text-base">Exportar meus dados</h2>
+                </div>
+                <p className="text-[#a78bca] text-sm leading-relaxed">
+                  Seus dados serão exportados em formato JSON, incluindo lições, mapas mentais, jornadas e sessões de idiomas. Deseja continuar?
+                </p>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    onClick={handleExportConfirm}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:scale-[1.02]"
+                    style={{
+                      background: "linear-gradient(135deg, #7c1fff, #a66aff)",
+                      color: "#fff",
+                    }}
+                  >
+                    Exportar
+                  </button>
+                  <button
+                    onClick={closeExportModal}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:text-white"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "#6b4fa0",
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
             )}
 
-            {/* Ranking */}
-            <Link
-              href="/ranking"
-              onClick={() => setOpen(false)}
-              className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#a78bca",
-              }}
-            >
-              🏆 Ranking semanal
-            </Link>
+            {exportState === "loading" && (
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="flex gap-1.5">
+                  {[0, 1, 2].map(i => (
+                    <span
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{
+                        background: "#7c3aed",
+                        animation: "dotFade 1.2s ease-in-out infinite",
+                        animationDelay: `${i * 200}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <p className="text-[#a78bca] text-sm">Coletando seus dados...</p>
+                <style>{`@keyframes dotFade{0%,60%,100%{opacity:.15}30%{opacity:1}}`}</style>
+              </div>
+            )}
 
-            {/* Sair */}
-            <button
-              onClick={handleSignOut}
-              className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:text-white"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#6b4fa0",
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              Sair da conta
-            </button>
+            {exportState === "done" && (
+              <>
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <span className="text-4xl">✅</span>
+                  <p className="text-white font-semibold text-sm">Download iniciado!</p>
+                  <p className="text-[#a78bca] text-xs text-center">
+                    O arquivo <span className="text-[#c39dff]">mindly_meus_dados_*.json</span> foi salvo na sua pasta de downloads.
+                  </p>
+                </div>
+                <button
+                  onClick={closeExportModal}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:text-white"
+                  style={{
+                    background: "rgba(124,31,255,0.15)",
+                    border: "1px solid rgba(124,31,255,0.25)",
+                    color: "#c39dff",
+                  }}
+                >
+                  Fechar
+                </button>
+              </>
+            )}
+
+            {exportState === "error" && (
+              <>
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <span className="text-4xl">❌</span>
+                  <p className="text-white font-semibold text-sm">Erro ao exportar</p>
+                  <p className="text-[#a78bca] text-xs text-center">
+                    Não foi possível coletar os dados. Tente novamente.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleExportConfirm}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                    style={{
+                      background: "linear-gradient(135deg, #7c1fff, #a66aff)",
+                      color: "#fff",
+                    }}
+                  >
+                    Tentar novamente
+                  </button>
+                  <button
+                    onClick={closeExportModal}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:text-white"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "#6b4fa0",
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }
