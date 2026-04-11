@@ -153,10 +153,10 @@ Labels concisos (2-4 palavras), em português, específicos e relevantes.`;
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text = response.content.find(c => c.type === "text");
-    if (!text || text.type !== "text") throw new Error("Resposta inválida");
+    const textBlock = response.content.find(c => c.type === "text");
+    if (!textBlock || textBlock.type !== "text") throw new Error("Resposta inválida");
 
-    const jsonMatch = text.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("JSON não encontrado");
 
     const data = JSON.parse(jsonMatch[0]);
