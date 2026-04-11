@@ -53,6 +53,7 @@ export default function AdminCostsPage() {
 
   useEffect(() => {
     const supabase = createClient();
+    if (!supabase) { setAllowed(false); setLoading(false); return; }
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user || user.id !== ADMIN_ID) {
         setAllowed(false);
