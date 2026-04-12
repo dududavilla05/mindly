@@ -250,7 +250,7 @@ export default function MindMap({
       doc.setTextColor(90, 60, 138);
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
-      doc.text("Gerado pelo Mindly · Powered by Claude AI", pdfW / 2, 19, { align: "center" });
+      doc.text("Gerado pelo Mindly · Powered by Mindly AI", pdfW / 2, 19, { align: "center" });
 
       const margin = 8, imgAreaY = 24;
       const imgAreaH = pdfH - imgAreaY - margin;
@@ -296,7 +296,7 @@ export default function MindMap({
           await navigator.share({
             files: [file],
             title: topic.trim() || "Mapa Mental",
-            text: "Mapa mental gerado pelo Mindly · Powered by Claude AI",
+            text: "Mapa mental gerado pelo Mindly · Powered by Mindly AI",
           });
         } catch {
           // User cancelled — silent fallback to download

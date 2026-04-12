@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+
 interface ConfirmDeleteModalProps {
   message: string;
   onConfirm: () => void;
@@ -5,7 +10,11 @@ interface ConfirmDeleteModalProps {
 }
 
 export default function ConfirmDeleteModal({ message, onConfirm, onCancel }: ConfirmDeleteModalProps) {
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center px-4">
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -43,6 +52,7 @@ export default function ConfirmDeleteModal({ message, onConfirm, onCancel }: Con
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

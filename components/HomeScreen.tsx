@@ -907,7 +907,7 @@ export default function HomeScreen({
             </button>
           )}
           <p className="text-xs text-[#3d1f6e] text-center">
-            Powered by Claude AI · Lições personalizadas em segundos
+            Powered by Mindly AI · Lições personalizadas em segundos
           </p>
         </div>
       </div>

@@ -653,7 +653,7 @@ export default function LessonScreen({ lesson, subject, onBack, onNewLesson, onO
         </button>
 
         <p className="text-center text-xs text-[#3d1f6e] pb-4">
-          Gerado pelo Mindly · Powered by Claude AI
+          Gerado pelo Mindly · Powered by Mindly AI
         </p>
       </main>
 
