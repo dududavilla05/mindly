@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mindly-ruby.vercel.app/sitemap.xml
