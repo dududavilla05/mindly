@@ -60,6 +60,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+        <meta name="google-site-verification" content="7TtQOkh7X60yeaDK7ex3OU2wjETWVFszYwLVyFQKLzk" />
       </head>
       <body className="min-h-screen bg-[#0f0a1e] text-white antialiased">
         <SplashScreen />
