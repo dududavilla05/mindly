@@ -251,6 +251,14 @@ function QuizBlock({
   );
 }
 
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 export default function LanguageModule({ profile, onBack, onProfileUpdated }: LanguageModuleProps) {
   const [view,             setView]             = useState<"select" | "chat">("select");
   const [selectedLanguage, setSelectedLanguage] = useState(profile?.language_learning ?? "Inglês");
@@ -272,10 +280,11 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [sttSupported,  setSttSupported]  = useState(true);
   const [sttError,      setSttError]      = useState<string | null>(null);
 
-  const bottomRef        = useRef<HTMLDivElement>(null);
-  const inputRef         = useRef<HTMLTextAreaElement>(null);
-  const saveTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const recognitionRef   = useRef<unknown>(null);
+  const bottomRef           = useRef<HTMLDivElement>(null);
+  const inputRef            = useRef<HTMLTextAreaElement>(null);
+  const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionRef      = useRef<unknown>(null);
+  const sttPendingTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Espelha o state — garante valor atual dentro de callbacks/closures
   const sessionIdRef        = useRef<string | null>(null);
   // Previne INSERT duplo: só um save com id=null pode rodar por vez
@@ -321,12 +330,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   useEffect(() => {
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (recognitionRef.current as any)?.stop();
+      (recognitionRef.current as any)?.abort?.();
+      if (sttPendingTimerRef.current) clearTimeout(sttPendingTimerRef.current);
     };
   }, []);
 
   // ── STT: reconhecimento de voz → input ──
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -343,31 +353,49 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       (recognitionRef.current as any)?.stop();
       return;
     }
-    // Se está aguardando permissão, ignora clique duplo
+    // Se está aguardando permissão/conexão, ignora clique duplo
     if (sttPending) return;
 
     setSttError(null);
 
-    // NÃO chamar getUserMedia aqui — quebra o user-gesture chain no iOS Safari.
-    // A SpeechRecognition API solicita permissão internamente e dispara
-    // onerror("not-allowed") se negada.
+    // Desktop (Chrome/Edge): getUserMedia exibe o diálogo de permissão claramente.
+    // iOS/iPadOS: pular getUserMedia — ele quebra o user-gesture chain no Safari.
+    if (!isIOS() && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+        console.log("[STT] permissão de microfone concedida");
+      } catch (permErr) {
+        console.error("[STT] permissão negada:", permErr);
+        setSttError("Permissão de microfone negada. Clique no ícone de cadeado na barra de endereços e habilite o microfone.");
+        return;
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
     recognition.lang            = LANG_LOCALE[selectedLanguage] ?? "en-US";
-    recognition.continuous      = false;   // para após o primeiro resultado final
-    recognition.interimResults  = true;    // feedback em tempo real enquanto fala
+    recognition.continuous      = false;
+    recognition.interimResults  = true;
     recognition.maxAlternatives = 1;
 
     console.log("[STT] iniciando — lang:", recognition.lang);
 
+    const clearTimer = () => {
+      if (sttPendingTimerRef.current) {
+        clearTimeout(sttPendingTimerRef.current);
+        sttPendingTimerRef.current = null;
+      }
+    };
+
     recognition.onstart = () => {
       console.log("[STT] onstart — microfone ativo");
+      clearTimer();
       setSttPending(false);
       setListening(true);
     };
 
     recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
-      // Pega o melhor resultado final disponível
       let transcript = "";
       for (let i = e.results.length - 1; i >= 0; i--) {
         if (e.results[i].isFinal) {
@@ -387,22 +415,24 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     recognition.onend = () => {
       console.log("[STT] onend — sessão encerrada");
+      clearTimer();
       setSttPending(false);
       setListening(false);
     };
 
     recognition.onerror = (e: { error: string; message?: string }) => {
       console.error("[STT] onerror — tipo:", e.error, "| msg:", e.message ?? "(sem mensagem)");
+      clearTimer();
       setSttPending(false);
       setListening(false);
 
       const MSG: Record<string, string> = {
-        "not-allowed":    "Permissão de microfone negada. Habilite nas configurações do browser.",
+        "not-allowed":    "Permissão negada. Clique no ícone de cadeado na barra de endereços e habilite o microfone.",
         "no-speech":      "Nenhuma fala detectada. Tente falar mais perto do microfone.",
         "network":        "Erro de rede no reconhecimento de voz. Verifique sua conexão.",
-        "audio-capture":  "Nenhum microfone encontrado ou acessível.",
-        "service-not-allowed": "Serviço de voz não permitido. Tente em HTTPS ou outro browser.",
-        "aborted":        "",   // cancelado pelo usuário — sem mensagem
+        "audio-capture":  "Microfone não encontrado. Verifique se está conectado.",
+        "service-not-allowed": "Serviço de voz não permitido neste contexto.",
+        "aborted":        "",
       };
       const msg = MSG[e.error] ?? `Erro no microfone: ${e.error}`;
       if (msg) setSttError(msg);
@@ -413,8 +443,17 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     try {
       recognition.start();
       setSttPending(true);
+      // Timeout de segurança: se onstart não disparar em 3s, aborta com mensagem clara
+      sttPendingTimerRef.current = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (recognitionRef.current as any)?.abort?.();
+        setSttPending(false);
+        setListening(false);
+        setSttError("Microfone não respondeu. Verifique permissões e tente novamente.");
+      }, 3000);
     } catch (startErr) {
       console.error("[STT] recognition.start() lançou exceção:", startErr);
+      clearTimer();
       setSttPending(false);
       setListening(false);
       setSttError("Não foi possível iniciar o microfone. Tente novamente.");

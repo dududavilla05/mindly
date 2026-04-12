@@ -79,6 +79,15 @@ interface HomeScreenProps {
   onOpenChallenge?: () => void;
 }
 
+// iOS/iPadOS detection — needed to branch microphone permission strategy
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 export default function HomeScreen({
   onLessonGenerated,
   user,
@@ -103,8 +112,9 @@ export default function HomeScreen({
   const [micPending,     setMicPending]     = useState(false);
   const [micSupported,   setMicSupported]   = useState(true);
   const [micError,       setMicError]       = useState<string | null>(null);
-  const fileInputRef    = useRef<HTMLInputElement>(null);
-  const micRecognitionRef = useRef<unknown>(null);
+  const fileInputRef       = useRef<HTMLInputElement>(null);
+  const micRecognitionRef  = useRef<unknown>(null);
+  const micPendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Garantir que o portal e conteúdo dependente de auth só renderizam no cliente
   useEffect(() => {
@@ -142,10 +152,13 @@ export default function HomeScreen({
 
   // Cleanup do microfone ao desmontar
   useEffect(() => {
-    return () => { (micRecognitionRef.current as { stop?: () => void })?.stop?.(); };
+    return () => {
+      (micRecognitionRef.current as { abort?: () => void })?.abort?.();
+      if (micPendingTimerRef.current) clearTimeout(micPendingTimerRef.current);
+    };
   }, []);
 
-  const startMicListening = useCallback(() => {
+  const startMicListening = useCallback(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setMicSupported(false); return; }
@@ -155,14 +168,25 @@ export default function HomeScreen({
       (micRecognitionRef.current as { stop?: () => void })?.stop?.();
       return;
     }
-    // Se está aguardando permissão, ignora clique duplo
+    // Se está aguardando permissão/conexão, ignora clique duplo
     if (micPending) return;
 
     setMicError(null);
 
-    // NÃO chamar getUserMedia aqui — quebra o user-gesture chain no iOS Safari.
-    // A própria SpeechRecognition API solicita permissão do microfone e dispara
-    // onerror("not-allowed") caso negada.
+    // Desktop (Chrome/Edge): getUserMedia explicita o diálogo de permissão de forma
+    // clara antes de iniciar o SpeechRecognition. Sem isso, o Chrome exibe apenas
+    // um ícone discreto na barra de endereços e onstart nunca dispara.
+    // iOS/iPadOS: pular getUserMedia — ele quebra o user-gesture chain no Safari.
+    if (!isIOS() && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+      } catch {
+        setMicError("Permissão de microfone negada. Clique no ícone de cadeado na barra de endereços e habilite o microfone.");
+        return;
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
     recognition.lang            = "pt-BR";
@@ -170,7 +194,14 @@ export default function HomeScreen({
     recognition.interimResults  = true;
     recognition.maxAlternatives = 1;
 
-    recognition.onstart  = () => { setMicPending(false); setMicListening(true); };
+    const clearTimer = () => {
+      if (micPendingTimerRef.current) {
+        clearTimeout(micPendingTimerRef.current);
+        micPendingTimerRef.current = null;
+      }
+    };
+
+    recognition.onstart  = () => { clearTimer(); setMicPending(false); setMicListening(true); };
     recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
       for (let i = e.results.length - 1; i >= 0; i--) {
         if (e.results[i].isFinal) {
@@ -181,15 +212,16 @@ export default function HomeScreen({
         }
       }
     };
-    recognition.onend   = () => { setMicPending(false); setMicListening(false); };
+    recognition.onend   = () => { clearTimer(); setMicPending(false); setMicListening(false); };
     recognition.onerror = (e: { error: string }) => {
+      clearTimer();
       setMicPending(false);
       setMicListening(false);
       const msgs: Record<string, string> = {
-        "not-allowed":   "Permissão de microfone negada. Habilite nas configurações do browser.",
+        "not-allowed":   "Permissão negada. Clique no ícone de cadeado na barra de endereços e habilite o microfone.",
         "no-speech":     "Nenhuma fala detectada. Tente novamente.",
-        "network":       "Erro de rede no reconhecimento de voz.",
-        "audio-capture": "Nenhum microfone encontrado.",
+        "network":       "Erro de rede no reconhecimento de voz. Verifique sua conexão.",
+        "audio-capture": "Microfone não encontrado. Verifique se está conectado.",
         "aborted":       "",
       };
       const msg = msgs[e.error] ?? `Erro no microfone: ${e.error}`;
@@ -200,7 +232,15 @@ export default function HomeScreen({
     try {
       recognition.start();
       setMicPending(true);
+      // Timeout de segurança: se onstart não disparar em 3s, aborta com mensagem clara
+      micPendingTimerRef.current = setTimeout(() => {
+        (micRecognitionRef.current as { abort?: () => void })?.abort?.();
+        setMicPending(false);
+        setMicListening(false);
+        setMicError("Microfone não respondeu. Verifique permissões e tente novamente.");
+      }, 3000);
     } catch {
+      clearTimer();
       setMicPending(false);
       setMicListening(false);
       setMicError("Não foi possível iniciar o microfone. Tente novamente.");
@@ -642,16 +682,27 @@ export default function HomeScreen({
               ✨ Digite qualquer tema e a IA gera uma lição completa personalizada para você
             </p>
             {!micSupported && (
-              <p className="text-xs text-[#7a6a9a]">Reconhecimento de voz não suportado. Use Chrome ou Edge.</p>
+              <p className="text-xs text-[#7a6a9a]">
+                Reconhecimento de voz não disponível no seu browser. Use o campo de texto acima para digitar.
+              </p>
             )}
             {micError && (
-              <button
-                onClick={() => setMicError(null)}
-                className="text-left text-xs px-3 py-1.5 rounded-xl"
-                style={{ background: "rgba(220,60,60,0.12)", border: "1px solid rgba(220,60,60,0.3)", color: "#f87171" }}
-              >
-                {micError}
-              </button>
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+                style={{ background: "rgba(220,60,60,0.1)", border: "1px solid rgba(220,60,60,0.25)" }}>
+                <p className="flex-1 text-xs text-red-400 leading-snug">{micError}</p>
+                <button
+                  onClick={startMicListening}
+                  className="shrink-0 text-xs font-semibold text-[#c39dff] hover:text-white transition-colors whitespace-nowrap"
+                >
+                  Tentar novamente
+                </button>
+                <button
+                  onClick={() => setMicError(null)}
+                  className="shrink-0 text-white/30 hover:text-white/70 transition-colors text-xs"
+                >
+                  ✕
+                </button>
+              </div>
             )}
             <div className="relative">
               <textarea
