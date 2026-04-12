@@ -79,15 +79,6 @@ interface HomeScreenProps {
   onOpenChallenge?: () => void;
 }
 
-// iOS/iPadOS detection — needed to branch microphone permission strategy
-function isIOS() {
-  if (typeof navigator === "undefined") return false;
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
-
 export default function HomeScreen({
   onLessonGenerated,
   user,
@@ -150,47 +141,53 @@ export default function HomeScreen({
     if (file) handleImageFile(file);
   };
 
-  // Cleanup do microfone ao desmontar
+  // Cleanup agressivo ao desmontar: nulifica handlers antes de abortar para evitar
+  // setState em componente desmontado e mic preso em estado ativo entre navegações.
   useEffect(() => {
     return () => {
-      (micRecognitionRef.current as { abort?: () => void })?.abort?.();
-      if (micPendingTimerRef.current) clearTimeout(micPendingTimerRef.current);
+      if (micPendingTimerRef.current) {
+        clearTimeout(micPendingTimerRef.current);
+        micPendingTimerRef.current = null;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = micRecognitionRef.current as any;
+      if (r) {
+        r.onstart  = null;
+        r.onresult = null;
+        r.onend    = null;
+        r.onerror  = null;
+        r.abort?.();
+        micRecognitionRef.current = null;
+      }
     };
   }, []);
 
-  const startMicListening = useCallback(async () => {
+  const startMicListening = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setMicSupported(false); return; }
 
-    // Se já está gravando, para
+    // Se já está gravando, para (toggle)
     if (micListening) {
       (micRecognitionRef.current as { stop?: () => void })?.stop?.();
       return;
     }
-    // Se está aguardando permissão/conexão, ignora clique duplo
+    // Evita clique duplo enquanto aguarda conectar
     if (micPending) return;
 
     setMicError(null);
 
-    // Desktop (Chrome/Edge): getUserMedia explicita o diálogo de permissão de forma
-    // clara antes de iniciar o SpeechRecognition. Sem isso, o Chrome exibe apenas
-    // um ícone discreto na barra de endereços e onstart nunca dispara.
-    // iOS/iPadOS: pular getUserMedia — ele quebra o user-gesture chain no Safari.
-    if (!isIOS() && navigator.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(t => t.stop());
-      } catch {
-        setMicError("Permissão de microfone negada. Clique no ícone de cadeado na barra de endereços e habilite o microfone.");
-        return;
-      }
-    }
+    // Não usar getUserMedia aqui:
+    //   - Desktop: getUserMedia causa falso "Permissão negada" quando o mic está em uso
+    //     por outra aba/app (NotReadableError cai no catch genérico).
+    //   - iOS: quebra o user-gesture chain do Safari.
+    // A SpeechRecognition gerencia permissão nativamente e dispara onerror("not-allowed")
+    // se negada — isso é suficiente para mostrar a mensagem correta.
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
     recognition.lang            = "pt-BR";
-    recognition.continuous      = false;
+    recognition.continuous      = false;  // para automaticamente após capturar texto
     recognition.interimResults  = true;
     recognition.maxAlternatives = 1;
 
@@ -212,17 +209,18 @@ export default function HomeScreen({
         }
       }
     };
+    // onend sempre dispara ao final (após resultado ou erro) — desativa o mic
     recognition.onend   = () => { clearTimer(); setMicPending(false); setMicListening(false); };
     recognition.onerror = (e: { error: string }) => {
       clearTimer();
       setMicPending(false);
       setMicListening(false);
       const msgs: Record<string, string> = {
-        "not-allowed":   "Permissão negada. Clique no ícone de cadeado na barra de endereços e habilite o microfone.",
+        "not-allowed":   "Microfone bloqueado. Acesse as configurações do site (ícone de cadeado) e habilite.",
         "no-speech":     "Nenhuma fala detectada. Tente novamente.",
         "network":       "Erro de rede no reconhecimento de voz. Verifique sua conexão.",
         "audio-capture": "Microfone não encontrado. Verifique se está conectado.",
-        "aborted":       "",
+        "aborted":       "",  // abortado pelo usuário/timeout — sem mensagem
       };
       const msg = msgs[e.error] ?? `Erro no microfone: ${e.error}`;
       if (msg) setMicError(msg);
@@ -232,13 +230,14 @@ export default function HomeScreen({
     try {
       recognition.start();
       setMicPending(true);
-      // Timeout de segurança: se onstart não disparar em 3s, aborta com mensagem clara
+      // Timeout de segurança: se onstart não disparar em 5s, aborta com mensagem clara
       micPendingTimerRef.current = setTimeout(() => {
-        (micRecognitionRef.current as { abort?: () => void })?.abort?.();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (micRecognitionRef.current as any)?.abort?.();
         setMicPending(false);
         setMicListening(false);
-        setMicError("Microfone não respondeu. Verifique permissões e tente novamente.");
-      }, 3000);
+        setMicError("Microfone não respondeu. Verifique as permissões e tente novamente.");
+      }, 5000);
     } catch {
       clearTimer();
       setMicPending(false);
