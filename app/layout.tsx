@@ -61,8 +61,18 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
         <meta name="google-site-verification" content="7TtQOkh7X60yeaDK7ex3OU2wjETWVFszYwLVyFQKLzk" />
+        {/* Meta Pixel */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26469474862719743');fbq('track','PageView');`,
+          }}
+        />
       </head>
       <body className="min-h-screen bg-[#0f0a1e] text-white antialiased">
+        <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img height="1" width="1" style={{ display: "none" }} src="https://www.facebook.com/tr?id=26469474862719743&ev=PageView&noscript=1" alt="" />
+        </noscript>
         <SplashScreen />
         <ServiceWorkerRegistration />
         <Toast />
