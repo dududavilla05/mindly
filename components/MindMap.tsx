@@ -317,7 +317,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
 
   return (
     <>
-    <div className="relative flex flex-col h-screen" style={{ background: "#0f0a1e" }}>
+    <div className="relative flex flex-col h-screen overflow-x-hidden" style={{ background: "#0f0a1e" }}>
       <FirstTimeModal
         storageKey="mindly_seen_mindmap"
         icon="🧠"
@@ -327,35 +327,35 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       />
       {/* Header */}
       <header
-        className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b shrink-0 z-10"
+        className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-4 border-b shrink-0 z-10"
         style={{ background: "rgba(15,10,30,0.95)", borderColor: "rgba(124,31,255,0.2)", backdropFilter: "blur(20px)" }}
       >
         <button
           onClick={onBack}
-          className="flex items-center justify-center w-9 h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors"
+          className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-[#a78bca] hover:text-white transition-colors shrink-0"
           style={{ background: "rgba(124,31,255,0.1)" }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
 
-        <span className="text-lg">🗺️</span>
-        <span className="text-white font-semibold text-sm hidden sm:block">Mapa Mental</span>
+        <span className="text-base sm:text-lg shrink-0">🗺️</span>
+        <span className="text-white font-semibold text-sm hidden sm:block shrink-0">Mapa Mental</span>
 
-        <div className="flex-1 flex gap-2">
+        <div className="flex-1 min-w-0 flex gap-1.5 sm:gap-2">
           <input
             value={topic}
             onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === "Enter" && generate()}
             placeholder="Digite um tema..."
-            className="flex-1 px-3 py-2 rounded-xl text-sm text-white placeholder-[#4a3870] outline-none"
+            className="flex-1 min-w-0 px-2.5 sm:px-3 py-2 rounded-xl text-sm text-white placeholder-[#4a3870] outline-none"
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,31,255,0.25)" }}
           />
           <button
             onClick={generate}
             disabled={loading || !topic.trim()}
-            className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 sm:px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             style={{ background: "linear-gradient(135deg, #7c1fff, #a66aff)" }}
           >
             {loading ? "..." : "Gerar"}
@@ -363,7 +363,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
           <button
             onClick={() => setImportModalOpen(true)}
             title="Gerar mapa a partir de texto"
-            className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 shrink-0"
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition-all hover:scale-105 shrink-0"
             style={{ background: "rgba(124,31,255,0.12)", border: "1px solid rgba(124,31,255,0.3)", color: "#c39dff" }}
           >
             📄
