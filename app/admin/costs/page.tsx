@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const ADMIN_ID = "5e6f4207-8242-41ce-9fdd-092d64237810";
@@ -46,6 +47,7 @@ function shortDate(iso: string) {
 }
 
 export default function AdminCostsPage() {
+  const router = useRouter();
   const [allowed, setAllowed]   = useState<boolean | null>(null);
   const [data, setData]         = useState<CostData | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -95,6 +97,14 @@ export default function AdminCostsPage() {
   return (
     <div className="min-h-screen p-4 md:p-8" style={{ background: "#0f0a1e", fontFamily: "system-ui, sans-serif" }}>
       <div className="max-w-4xl mx-auto">
+
+        {/* Back button */}
+        <button
+          onClick={() => router.push("/")}
+          className="mb-6 flex items-center gap-2 text-[#a78bca] hover:text-white text-sm transition-colors"
+        >
+          ← Voltar ao App
+        </button>
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
