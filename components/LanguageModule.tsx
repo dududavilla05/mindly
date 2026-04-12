@@ -268,6 +268,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
   const [listening,     setListening]     = useState(false);
+  const [sttPending,    setSttPending]    = useState(false);
   const [sttSupported,  setSttSupported]  = useState(true);
   const [sttError,      setSttError]      = useState<string | null>(null);
 
@@ -325,7 +326,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   }, []);
 
   // ── STT: reconhecimento de voz → input ──
-  const startListening = useCallback(async () => {
+  const startListening = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -335,28 +336,21 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       return;
     }
 
-    // Se já está escutando, para
+    // Se já está gravando, para
     if (listening) {
       console.log("[STT] stop chamado pelo usuário");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (recognitionRef.current as any)?.stop();
       return;
     }
+    // Se está aguardando permissão, ignora clique duplo
+    if (sttPending) return;
 
     setSttError(null);
 
-    // Solicita permissão explícita antes de iniciar — necessário em alguns browsers
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Para a stream imediatamente — só precisávamos da permissão
-      stream.getTracks().forEach(t => t.stop());
-      console.log("[STT] permissão de microfone concedida");
-    } catch (permErr) {
-      console.error("[STT] permissão negada:", permErr);
-      setSttError("Permissão de microfone negada. Habilite nas configurações do browser.");
-      return;
-    }
-
+    // NÃO chamar getUserMedia aqui — quebra o user-gesture chain no iOS Safari.
+    // A SpeechRecognition API solicita permissão internamente e dispara
+    // onerror("not-allowed") se negada.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
     recognition.lang            = LANG_LOCALE[selectedLanguage] ?? "en-US";
@@ -368,6 +362,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     recognition.onstart = () => {
       console.log("[STT] onstart — microfone ativo");
+      setSttPending(false);
       setListening(true);
     };
 
@@ -392,15 +387,17 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     recognition.onend = () => {
       console.log("[STT] onend — sessão encerrada");
+      setSttPending(false);
       setListening(false);
     };
 
     recognition.onerror = (e: { error: string; message?: string }) => {
       console.error("[STT] onerror — tipo:", e.error, "| msg:", e.message ?? "(sem mensagem)");
+      setSttPending(false);
       setListening(false);
 
       const MSG: Record<string, string> = {
-        "not-allowed":    "Microfone bloqueado. Habilite a permissão nas configurações do browser.",
+        "not-allowed":    "Permissão de microfone negada. Habilite nas configurações do browser.",
         "no-speech":      "Nenhuma fala detectada. Tente falar mais perto do microfone.",
         "network":        "Erro de rede no reconhecimento de voz. Verifique sua conexão.",
         "audio-capture":  "Nenhum microfone encontrado ou acessível.",
@@ -415,12 +412,14 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
 
     try {
       recognition.start();
+      setSttPending(true);
     } catch (startErr) {
       console.error("[STT] recognition.start() lançou exceção:", startErr);
+      setSttPending(false);
       setListening(false);
       setSttError("Não foi possível iniciar o microfone. Tente novamente.");
     }
-  }, [listening, selectedLanguage]);
+  }, [listening, sttPending, selectedLanguage]);
 
   // ── Lógica central de save (sem guard) ──
   // Sempre usa sessionIdRef.current para evitar closures obsoletas.
@@ -1003,13 +1002,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={listening ? "Ouvindo... fale agora" : `Escreva em ${selectedLanguage}...`}
+                  placeholder={listening ? "Ouvindo... fale agora" : sttPending ? "Conectando microfone..." : `Escreva em ${selectedLanguage}...`}
                   rows={1}
                   disabled={loading}
                   className="flex-1 min-w-0 resize-none rounded-xl px-3 py-3 text-sm text-white placeholder-[#4a3870] outline-none transition-all duration-200 disabled:opacity-50"
                   style={{
                     background: listening ? "rgba(220,60,60,0.06)" : "rgba(255,255,255,0.05)",
-                    border: listening ? "1px solid rgba(220,60,60,0.5)" : "1px solid rgba(124,31,255,0.25)",
+                    border: listening ? "1px solid rgba(220,60,60,0.5)" : sttPending ? "1px solid rgba(251,146,60,0.4)" : "1px solid rgba(124,31,255,0.25)",
                     maxHeight: "120px",
                     lineHeight: "1.5",
                   }}
@@ -1021,19 +1020,25 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
                 <button
                   onClick={startListening}
                   disabled={loading}
-                  title={listening ? "Parar gravação" : "Falar em vez de digitar"}
+                  title={listening ? "Parar gravação" : sttPending ? "Aguardando microfone..." : "Falar em vez de digitar"}
                   className={`flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${listening ? "animate-pulse" : ""}`}
                   style={{
                     width: "44px", height: "44px",
-                    background: listening ? "rgba(220,60,60,0.9)" : "rgba(124,31,255,0.15)",
-                    border: listening ? "1px solid rgba(220,60,60,0.7)" : "1px solid rgba(124,31,255,0.3)",
-                    boxShadow: listening ? "0 0 16px rgba(220,60,60,0.5)" : "none",
+                    background: listening ? "rgba(220,60,60,0.9)" : sttPending ? "rgba(251,146,60,0.2)" : "rgba(124,31,255,0.15)",
+                    border: listening ? "1px solid rgba(220,60,60,0.7)" : sttPending ? "1px solid rgba(251,146,60,0.5)" : "1px solid rgba(124,31,255,0.3)",
+                    boxShadow: listening ? "0 0 16px rgba(220,60,60,0.5)" : sttPending ? "0 0 10px rgba(251,146,60,0.25)" : "none",
                   }}
                 >
                   {listening ? (
                     /* ícone parar gravação */
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                       <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ) : sttPending ? (
+                    /* spinner aguardando permissão */
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" />
                     </svg>
                   ) : (
                     /* ícone microfone */

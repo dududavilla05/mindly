@@ -100,6 +100,7 @@ export default function HomeScreen({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [micListening,   setMicListening]   = useState(false);
+  const [micPending,     setMicPending]     = useState(false);
   const [micSupported,   setMicSupported]   = useState(true);
   const [micError,       setMicError]       = useState<string | null>(null);
   const fileInputRef    = useRef<HTMLInputElement>(null);
@@ -144,33 +145,32 @@ export default function HomeScreen({
     return () => { (micRecognitionRef.current as { stop?: () => void })?.stop?.(); };
   }, []);
 
-  const startMicListening = useCallback(async () => {
+  const startMicListening = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setMicSupported(false); return; }
 
+    // Se já está gravando, para
     if (micListening) {
       (micRecognitionRef.current as { stop?: () => void })?.stop?.();
       return;
     }
+    // Se está aguardando permissão, ignora clique duplo
+    if (micPending) return;
 
     setMicError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
-    } catch {
-      setMicError("Permissão de microfone negada. Habilite nas configurações do browser.");
-      return;
-    }
 
+    // NÃO chamar getUserMedia aqui — quebra o user-gesture chain no iOS Safari.
+    // A própria SpeechRecognition API solicita permissão do microfone e dispara
+    // onerror("not-allowed") caso negada.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
-    recognition.lang           = "pt-BR";
-    recognition.continuous     = false;
-    recognition.interimResults = true;
+    recognition.lang            = "pt-BR";
+    recognition.continuous      = false;
+    recognition.interimResults  = true;
     recognition.maxAlternatives = 1;
 
-    recognition.onstart  = () => setMicListening(true);
+    recognition.onstart  = () => { setMicPending(false); setMicListening(true); };
     recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
       for (let i = e.results.length - 1; i >= 0; i--) {
         if (e.results[i].isFinal) {
@@ -181,11 +181,12 @@ export default function HomeScreen({
         }
       }
     };
-    recognition.onend   = () => setMicListening(false);
+    recognition.onend   = () => { setMicPending(false); setMicListening(false); };
     recognition.onerror = (e: { error: string }) => {
+      setMicPending(false);
       setMicListening(false);
       const msgs: Record<string, string> = {
-        "not-allowed":   "Microfone bloqueado. Habilite a permissão nas configurações.",
+        "not-allowed":   "Permissão de microfone negada. Habilite nas configurações do browser.",
         "no-speech":     "Nenhuma fala detectada. Tente novamente.",
         "network":       "Erro de rede no reconhecimento de voz.",
         "audio-capture": "Nenhum microfone encontrado.",
@@ -196,11 +197,15 @@ export default function HomeScreen({
     };
 
     micRecognitionRef.current = recognition;
-    try { recognition.start(); } catch {
+    try {
+      recognition.start();
+      setMicPending(true);
+    } catch {
+      setMicPending(false);
       setMicListening(false);
       setMicError("Não foi possível iniciar o microfone. Tente novamente.");
     }
-  }, [micListening]);
+  }, [micListening, micPending]);
 
   const handleSuggestionClick = (suggestion: string) => {
     setSubject(suggestion);
@@ -658,12 +663,12 @@ export default function HomeScreen({
                     handleGenerate();
                   }
                 }}
-                placeholder={micListening ? "Ouvindo... fale agora" : "Ex: Como funciona a inflação? O que é machine learning?..."}
+                placeholder={micListening ? "Ouvindo... fale agora" : micPending ? "Conectando microfone..." : "Ex: Como funciona a inflação? O que é machine learning?..."}
                 rows={3}
                 className="w-full resize-none rounded-2xl px-5 py-4 text-white placeholder-[#4a3870] text-base outline-none transition-all duration-200"
                 style={{
                   background: micListening ? "rgba(220,60,60,0.05)" : "rgba(255,255,255,0.06)",
-                  border: micListening ? "1px solid rgba(220,60,60,0.45)" : "1px solid rgba(124, 31, 255, 0.2)",
+                  border: micListening ? "1px solid rgba(220,60,60,0.45)" : micPending ? "1px solid rgba(251,146,60,0.4)" : "1px solid rgba(124, 31, 255, 0.2)",
                   lineHeight: "1.6",
                   paddingBottom: "48px",
                 }}
@@ -683,18 +688,23 @@ export default function HomeScreen({
               {/* Botão microfone */}
               <button
                 onClick={startMicListening}
-                title={micListening ? "Parar gravação" : "Falar em vez de digitar (pt-BR)"}
+                title={micListening ? "Parar gravação" : micPending ? "Aguardando microfone..." : "Falar em vez de digitar (pt-BR)"}
                 className={`absolute bottom-3 right-3 flex items-center justify-center rounded-xl transition-all duration-200 active:scale-95 ${micListening ? "animate-pulse" : ""}`}
                 style={{
                   width: "36px", height: "36px",
-                  background: micListening ? "rgba(220,60,60,0.9)" : "rgba(124,31,255,0.15)",
-                  border: micListening ? "1px solid rgba(220,60,60,0.7)" : "1px solid rgba(124,31,255,0.3)",
-                  boxShadow: micListening ? "0 0 14px rgba(220,60,60,0.45)" : "none",
+                  background: micListening ? "rgba(220,60,60,0.9)" : micPending ? "rgba(251,146,60,0.2)" : "rgba(124,31,255,0.15)",
+                  border: micListening ? "1px solid rgba(220,60,60,0.7)" : micPending ? "1px solid rgba(251,146,60,0.5)" : "1px solid rgba(124,31,255,0.3)",
+                  boxShadow: micListening ? "0 0 14px rgba(220,60,60,0.45)" : micPending ? "0 0 10px rgba(251,146,60,0.25)" : "none",
                 }}
               >
                 {micListening ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
                     <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : micPending ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                    <path d="M12 2a10 10 0 0 1 10 10" />
                   </svg>
                 ) : (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c39dff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
