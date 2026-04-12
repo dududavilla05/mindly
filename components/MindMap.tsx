@@ -171,13 +171,10 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     const svg = container.querySelector("svg") as SVGSVGElement | null;
     if (!svg) { setExportingPdf(false); return; }
 
-    const w = container.offsetWidth;
-    const h = container.offsetHeight;
+    const isMobile = window.innerWidth < 768;
 
     // Clone SVG — never mutate the live React DOM during async capture
     const svgClone = svg.cloneNode(true) as SVGSVGElement;
-    svgClone.setAttribute("width", String(w));
-    svgClone.setAttribute("height", String(h));
 
     // Dark background rect matching app theme
     const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -189,8 +186,7 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     svgClone.insertBefore(bgRect, svgClone.firstChild);
 
     // ── Fit all nodes into view ────────────────────────────────────────────────
-    // 1. Remove the user's current pan/zoom transform from the main group so
-    //    node positions are in raw content-space coordinates.
+    // 1. Remove pan/zoom transform so node positions are in raw content-space coordinates
     const mainGroup = svgClone.querySelector(":scope > g") as SVGGElement | null;
     if (mainGroup) mainGroup.removeAttribute("transform");
 
@@ -201,18 +197,18 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
       if (!m) return;
       const nx = parseFloat(m[1]);
       const ny = parseFloat(m[2]);
-      // Conservative half-dimensions: root=160×60 + 14px halo; level1=140×50; level2=120×40
-      const hw = 95; // (160/2) + 15
-      const hh = 46; // (60/2)  + 16
+      // Conservative half-dimensions covering root (160×60 + 14px halo) through level2 (120×40)
+      const hw = 95;
+      const hh = 46;
       minX = Math.min(minX, nx - hw);
       minY = Math.min(minY, ny - hh);
       maxX = Math.max(maxX, nx + hw);
       maxY = Math.max(maxY, ny + hh);
     });
 
-    // 3. Set viewBox so the entire content is visible, with padding
+    // 3. Set viewBox so the entire content is visible, with generous padding
+    const PAD = 60;
     if (minX < Infinity) {
-      const PAD = 55;
       svgClone.setAttribute(
         "viewBox",
         `${minX - PAD} ${minY - PAD} ${maxX - minX + PAD * 2} ${maxY - minY + PAD * 2}`
@@ -221,66 +217,116 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
     }
     // ──────────────────────────────────────────────────────────────────────────
 
+    // Use a fixed export canvas size regardless of screen dimensions.
+    // Mobile: square (good for gallery/sharing). Desktop: landscape (matches PDF).
+    // This avoids the portrait-canvas-in-landscape-PDF bug on mobile.
+    const EXPORT_W = isMobile ? 1080 : 1920;
+    const EXPORT_H = isMobile ? 1080 : 1080;
+    const CANVAS_SCALE = isMobile ? 2 : 1.5;
+
+    svgClone.setAttribute("width",  String(EXPORT_W));
+    svgClone.setAttribute("height", String(EXPORT_H));
+
     // Off-screen container below viewport (avoids backdrop-filter compositor issues)
     const tempDiv = document.createElement("div");
-    tempDiv.style.cssText = `position:fixed; left:0; top:100vh; width:${w}px; height:${h}px; background:#0f0a1e; overflow:hidden;`;
+    tempDiv.style.cssText = `position:fixed;left:0;top:100vh;width:${EXPORT_W}px;height:${EXPORT_H}px;background:#0f0a1e;overflow:hidden;`;
     tempDiv.appendChild(svgClone);
     document.body.appendChild(tempDiv);
 
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
 
       const canvas = await html2canvas(tempDiv, {
         backgroundColor: "#0f0a1e",
-        scale: 2,
+        scale: CANVAS_SCALE,
         useCORS: true,
         logging: false,
       });
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdfW = 297;
-      const pdfH = 210;
-      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-
-      // Dark background
-      doc.setFillColor(15, 10, 30);
-      doc.rect(0, 0, pdfW, pdfH, "F");
-
-      // Title
-      doc.setTextColor(195, 157, 255);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text(topic.trim() || "Mapa Mental", pdfW / 2, 12, { align: "center" });
-
-      // Subtitle
-      doc.setTextColor(90, 60, 138);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text("Gerado pelo Mindly · Powered by Claude AI", pdfW / 2, 19, { align: "center" });
-
-      // Imagem do mapa
-      const margin = 8;
-      const imgAreaY = 24;
-      const imgAreaH = pdfH - imgAreaY - margin;
-      const imgAreaW = pdfW - margin * 2;
-      const imgRatio = canvas.width / canvas.height;
-      const areaRatio = imgAreaW / imgAreaH;
-      let drawW = imgAreaW;
-      let drawH = imgAreaH;
-      if (imgRatio > areaRatio) {
-        drawH = imgAreaW / imgRatio;
-      } else {
-        drawW = imgAreaH * imgRatio;
-      }
-      const drawX = margin + (imgAreaW - drawW) / 2;
-      const drawY = imgAreaY + (imgAreaH - drawH) / 2;
-      doc.addImage(imgData, "PNG", drawX, drawY, drawW, drawH);
-
       const slug = (topic.trim() || "mapa-mental").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 40);
-      doc.save(`mindly-mapa-${slug}.pdf`);
+
+      if (isMobile) {
+        // ── Mobile: export as PNG → Web Share API or fallback download ──────
+        const pngBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
+        if (!pngBlob) throw new Error("Falha ao gerar imagem");
+
+        const fileName = `mindly-mapa-${slug}.png`;
+        const file = new File([pngBlob], fileName, { type: "image/png" });
+
+        const canShare = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+
+        if (canShare) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: topic.trim() || "Mapa Mental",
+              text: "Mapa mental gerado pelo Mindly · Powered by Claude AI",
+            });
+          } catch {
+            // User cancelled share or API failed — silent fallback to download
+            const url = URL.createObjectURL(pngBlob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }
+        } else {
+          // No file share support — direct PNG download
+          const url = URL.createObjectURL(pngBlob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fileName;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } else {
+        // ── Desktop: PDF export ───────────────────────────────────────────────
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = await import("jspdf");
+
+        const pdfW = 297;
+        const pdfH = 210;
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+        // Dark background
+        doc.setFillColor(15, 10, 30);
+        doc.rect(0, 0, pdfW, pdfH, "F");
+
+        // Title
+        doc.setTextColor(195, 157, 255);
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text(topic.trim() || "Mapa Mental", pdfW / 2, 12, { align: "center" });
+
+        // Subtitle
+        doc.setTextColor(90, 60, 138);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text("Gerado pelo Mindly · Powered by Claude AI", pdfW / 2, 19, { align: "center" });
+
+        // Imagem do mapa — fit inside PDF preserving aspect ratio
+        const margin = 8;
+        const imgAreaY = 24;
+        const imgAreaH = pdfH - imgAreaY - margin;
+        const imgAreaW = pdfW - margin * 2;
+        const imgRatio = canvas.width / canvas.height;
+        const areaRatio = imgAreaW / imgAreaH;
+        let drawW = imgAreaW;
+        let drawH = imgAreaH;
+        if (imgRatio > areaRatio) {
+          drawH = imgAreaW / imgRatio;
+        } else {
+          drawW = imgAreaH * imgRatio;
+        }
+        const drawX = margin + (imgAreaW - drawW) / 2;
+        const drawY = imgAreaY + (imgAreaH - drawH) / 2;
+        doc.addImage(imgData, "PNG", drawX, drawY, drawW, drawH);
+
+        doc.save(`mindly-mapa-${slug}.pdf`);
+      }
     } catch (e) {
-      console.error("[MindMap PDF]", e);
+      console.error("[MindMap Export]", e);
     } finally {
       document.body.removeChild(tempDiv);
       void document.body.offsetHeight; // force repaint to clear compositor state
@@ -486,8 +532,8 @@ export default function MindMap({ plan, userId, onBack, initialTopic = "", initi
                   className="flex items-center gap-3 px-5 text-sm font-medium text-[#d4c0f0] hover:bg-white/5 active:bg-white/10 transition-colors disabled:opacity-50"
                   style={{ height: "52px" }}
                 >
-                  <span className="text-base">📄</span>
-                  {exportingPdf ? "Gerando PDF..." : "Exportar PDF"}
+                  <span className="text-base">📷</span>
+                  {exportingPdf ? "Gerando imagem..." : "Exportar Imagem"}
                 </button>
               </div>
             </>
