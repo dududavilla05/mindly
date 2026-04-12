@@ -105,6 +105,7 @@ export default function HomeScreen({
   const [micError,       setMicError]       = useState<string | null>(null);
   const fileInputRef       = useRef<HTMLInputElement>(null);
   const micRecognitionRef  = useRef<unknown>(null);
+  const micStreamRef       = useRef<MediaStream | null>(null);
   const micPendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Garantir que o portal e conteúdo dependente de auth só renderizam no cliente
@@ -149,6 +150,11 @@ export default function HomeScreen({
         clearTimeout(micPendingTimerRef.current);
         micPendingTimerRef.current = null;
       }
+      // Para qualquer stream ativo — libera o indicador laranja do iOS
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r = micRecognitionRef.current as any;
       if (r) {
@@ -162,7 +168,7 @@ export default function HomeScreen({
     };
   }, []);
 
-  const startMicListening = useCallback(() => {
+  const startMicListening = useCallback(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setMicSupported(false); return; }
@@ -176,13 +182,56 @@ export default function HomeScreen({
     if (micPending) return;
 
     setMicError(null);
+    console.log("[mic] Button clicked");
 
-    // Não usar getUserMedia aqui:
-    //   - Desktop: getUserMedia causa falso "Permissão negada" quando o mic está em uso
-    //     por outra aba/app (NotReadableError cai no catch genérico).
-    //   - iOS: quebra o user-gesture chain do Safari.
-    // A SpeechRecognition gerencia permissão nativamente e dispara onerror("not-allowed")
-    // se negada — isso é suficiente para mostrar a mensagem correta.
+    // HTTPS obrigatório para acesso ao microfone
+    if (!window.isSecureContext) {
+      console.error("[mic] Not in secure context — HTTPS required");
+      setMicError("O microfone requer uma conexão segura (HTTPS). Verifique o endereço da página.");
+      return;
+    }
+
+    // Para qualquer stream de sessão anterior
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+    }
+
+    // Detecta iOS/iPadOS — async/await antes de recognition.start() quebra o user-gesture
+    // chain no Safari, então usamos caminhos diferentes por plataforma
+    const ios =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    console.log("[mic] Platform:", ios ? "iOS/iPadOS" : "desktop/Android");
+
+    if (!ios) {
+      // Desktop / Android: solicita permissão explicitamente via getUserMedia.
+      // Garante o diálogo de permissão completo (não apenas o indicador na barra de endereço).
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setMicError("Acesso ao microfone não suportado neste browser.");
+        return;
+      }
+      try {
+        console.log("[mic] Requesting getUserMedia...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStreamRef.current = stream;
+        console.log("[mic] getUserMedia granted —", stream.getTracks().length, "track(s)");
+      } catch (err) {
+        const e = err as DOMException;
+        console.error("[mic] getUserMedia failed:", e.name, e.message);
+        const msgs: Record<string, string> = {
+          "NotAllowedError":      "Permissão do microfone negada. Clique no cadeado na barra de endereço e habilite o microfone.",
+          "NotFoundError":        "Nenhum microfone encontrado. Verifique se há um microfone conectado.",
+          "NotReadableError":     "Microfone em uso por outro aplicativo ou aba. Feche outros programas que usam o microfone.",
+          "AbortError":           "A inicialização do microfone foi interrompida. Tente novamente.",
+          "SecurityError":        "Acesso ao microfone bloqueado por política de segurança do browser.",
+          "OverconstrainedError": "Configuração de microfone incompatível com este dispositivo.",
+        };
+        const msg = msgs[e.name] ?? `Erro ao acessar o microfone (${e.name}).`;
+        setMicError(msg);
+        return;
+      }
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
@@ -198,23 +247,45 @@ export default function HomeScreen({
       }
     };
 
-    recognition.onstart  = () => { clearTimer(); setMicPending(false); setMicListening(true); };
+    const stopStream = () => {
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
+        console.log("[mic] Stream tracks stopped");
+      }
+    };
+
+    recognition.onstart = () => {
+      clearTimer();
+      setMicPending(false);
+      setMicListening(true);
+      console.log("[mic] Recognition started");
+    };
     recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
       for (let i = e.results.length - 1; i >= 0; i--) {
         if (e.results[i].isFinal) {
           const t = e.results[i][0].transcript;
+          console.log("[mic] Final transcript:", t);
           setSubject(prev => prev ? `${prev} ${t}` : t);
           setError(null);
           break;
         }
       }
     };
-    // onend sempre dispara ao final (após resultado ou erro) — desativa o mic
-    recognition.onend   = () => { clearTimer(); setMicPending(false); setMicListening(false); };
-    recognition.onerror = (e: { error: string }) => {
+    // onend sempre dispara ao final (após resultado ou erro) — desativa o mic e libera o stream
+    recognition.onend = () => {
       clearTimer();
+      stopStream();
       setMicPending(false);
       setMicListening(false);
+      console.log("[mic] Recognition ended");
+    };
+    recognition.onerror = (e: { error: string }) => {
+      clearTimer();
+      stopStream();
+      setMicPending(false);
+      setMicListening(false);
+      console.error("[mic] Recognition error:", e.error);
       const msgs: Record<string, string> = {
         "not-allowed":   "Microfone bloqueado. Acesse as configurações do site (ícone de cadeado) e habilite.",
         "no-speech":     "Nenhuma fala detectada. Tente novamente.",
@@ -228,18 +299,23 @@ export default function HomeScreen({
 
     micRecognitionRef.current = recognition;
     try {
+      console.log("[mic] Calling recognition.start()...");
       recognition.start();
       setMicPending(true);
       // Timeout de segurança: se onstart não disparar em 5s, aborta com mensagem clara
       micPendingTimerRef.current = setTimeout(() => {
+        console.warn("[mic] Timeout — mic did not respond in 5s");
+        stopStream();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (micRecognitionRef.current as any)?.abort?.();
         setMicPending(false);
         setMicListening(false);
         setMicError("Microfone não respondeu. Verifique as permissões e tente novamente.");
       }, 5000);
-    } catch {
+    } catch (err) {
+      console.error("[mic] recognition.start() threw:", err);
       clearTimer();
+      stopStream();
       setMicPending(false);
       setMicListening(false);
       setMicError("Não foi possível iniciar o microfone. Tente novamente.");

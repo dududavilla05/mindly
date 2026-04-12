@@ -276,6 +276,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   const inputRef            = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef      = useRef<unknown>(null);
+  const sttStreamRef        = useRef<MediaStream | null>(null);
   const sttPendingTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Espelha o state — garante valor atual dentro de callbacks/closures
   const sessionIdRef        = useRef<string | null>(null);
@@ -325,6 +326,11 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
         clearTimeout(sttPendingTimerRef.current);
         sttPendingTimerRef.current = null;
       }
+      // Para qualquer stream ativo — libera o indicador laranja do iOS
+      if (sttStreamRef.current) {
+        sttStreamRef.current.getTracks().forEach(t => t.stop());
+        sttStreamRef.current = null;
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r = recognitionRef.current as any;
       if (r) {
@@ -339,7 +345,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
   }, []);
 
   // ── STT: reconhecimento de voz → input ──
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -360,11 +366,56 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     if (sttPending) return;
 
     setSttError(null);
+    console.log("[STT] Button clicked");
 
-    // Não usar getUserMedia:
-    //   - Desktop: causa falso "Permissão negada" quando mic está em uso (NotReadableError).
-    //   - iOS: quebra o user-gesture chain do Safari.
-    // SpeechRecognition gerencia permissão nativamente; onerror("not-allowed") indica bloqueio.
+    // HTTPS obrigatório para acesso ao microfone
+    if (!window.isSecureContext) {
+      console.error("[STT] Not in secure context — HTTPS required");
+      setSttError("O microfone requer uma conexão segura (HTTPS). Verifique o endereço da página.");
+      return;
+    }
+
+    // Para qualquer stream de sessão anterior
+    if (sttStreamRef.current) {
+      sttStreamRef.current.getTracks().forEach(t => t.stop());
+      sttStreamRef.current = null;
+    }
+
+    // Detecta iOS/iPadOS — async/await antes de recognition.start() quebra o user-gesture
+    // chain no Safari, então usamos caminhos diferentes por plataforma
+    const ios =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    console.log("[STT] Platform:", ios ? "iOS/iPadOS" : "desktop/Android");
+
+    if (!ios) {
+      // Desktop / Android: solicita permissão explicitamente via getUserMedia.
+      // Garante o diálogo de permissão completo (não apenas o indicador na barra de endereço).
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setSttError("Acesso ao microfone não suportado neste browser.");
+        return;
+      }
+      try {
+        console.log("[STT] Requesting getUserMedia...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        sttStreamRef.current = stream;
+        console.log("[STT] getUserMedia granted —", stream.getTracks().length, "track(s)");
+      } catch (err) {
+        const e = err as DOMException;
+        console.error("[STT] getUserMedia failed:", e.name, e.message);
+        const msgs: Record<string, string> = {
+          "NotAllowedError":      "Permissão do microfone negada. Clique no cadeado na barra de endereço e habilite o microfone.",
+          "NotFoundError":        "Nenhum microfone encontrado. Verifique se há um microfone conectado.",
+          "NotReadableError":     "Microfone em uso por outro aplicativo ou aba. Feche outros programas que usam o microfone.",
+          "AbortError":           "A inicialização do microfone foi interrompida. Tente novamente.",
+          "SecurityError":        "Acesso ao microfone bloqueado por política de segurança do browser.",
+          "OverconstrainedError": "Configuração de microfone incompatível com este dispositivo.",
+        };
+        const msg = msgs[e.name] ?? `Erro ao acessar o microfone (${e.name}).`;
+        setSttError(msg);
+        return;
+      }
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SR() as any;
@@ -379,6 +430,14 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       if (sttPendingTimerRef.current) {
         clearTimeout(sttPendingTimerRef.current);
         sttPendingTimerRef.current = null;
+      }
+    };
+
+    const stopStream = () => {
+      if (sttStreamRef.current) {
+        sttStreamRef.current.getTracks().forEach(t => t.stop());
+        sttStreamRef.current = null;
+        console.log("[STT] Stream tracks stopped");
       }
     };
 
@@ -407,10 +466,11 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
       console.log("[STT] onspeechend — fala detectada encerrada");
     };
 
-    // onend sempre dispara ao final — desativa o mic
+    // onend sempre dispara ao final — desativa o mic e libera o stream
     recognition.onend = () => {
       console.log("[STT] onend — sessão encerrada");
       clearTimer();
+      stopStream();
       setSttPending(false);
       setListening(false);
     };
@@ -418,6 +478,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     recognition.onerror = (e: { error: string; message?: string }) => {
       console.error("[STT] onerror — tipo:", e.error, "| msg:", e.message ?? "(sem mensagem)");
       clearTimer();
+      stopStream();
       setSttPending(false);
       setListening(false);
 
@@ -436,10 +497,13 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     recognitionRef.current = recognition;
 
     try {
+      console.log("[STT] Calling recognition.start()...");
       recognition.start();
       setSttPending(true);
       // Timeout de segurança: se onstart não disparar em 5s, aborta com mensagem clara
       sttPendingTimerRef.current = setTimeout(() => {
+        console.warn("[STT] Timeout — mic did not respond in 5s");
+        stopStream();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (recognitionRef.current as any)?.abort?.();
         setSttPending(false);
@@ -449,6 +513,7 @@ export default function LanguageModule({ profile, onBack, onProfileUpdated }: La
     } catch (startErr) {
       console.error("[STT] recognition.start() lançou exceção:", startErr);
       clearTimer();
+      stopStream();
       setSttPending(false);
       setListening(false);
       setSttError("Não foi possível iniciar o microfone. Tente novamente.");
