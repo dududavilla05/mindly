@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import MindlyLogo from "./MindlyLogo";
 import type { LessonHistoryItem } from "@/hooks/useHistory";
 import type { MindMapItem } from "@/hooks/useMindMaps";
 import type { JourneyItem } from "@/hooks/useJourneys";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -68,6 +70,14 @@ export default function Sidebar({
   mapsToday = 0,
 }: SidebarProps) {
   const isMax = plan === "max";
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: "mindmap" | "journey" } | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === "mindmap") onDeleteMindMap?.(deleteConfirm.id);
+    else onDeleteJourney?.(deleteConfirm.id);
+    setDeleteConfirm(null);
+  };
 
   return (
     <aside
@@ -207,7 +217,7 @@ export default function Sidebar({
                       <p className="text-[10px] text-white/25 mt-1">{timeAgo(item.created_at)}</p>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir este mapa mental?")) onDeleteMindMap?.(item.id); }}
+                      onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: item.id, type: "mindmap" }); }}
                       className="shrink-0 p-2 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
                       title="Excluir"
                     >
@@ -276,7 +286,7 @@ export default function Sidebar({
                         </div>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); if (window.confirm("Excluir esta jornada? Todo o progresso será perdido.")) onDeleteJourney?.(item.id); }}
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: item.id, type: "journey" }); }}
                         className="shrink-0 p-2 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-red-400"
                         title="Excluir"
                       >
@@ -290,6 +300,18 @@ export default function Sidebar({
           )
         )}
       </div>
+
+      {deleteConfirm && (
+        <ConfirmDeleteModal
+          message={
+            deleteConfirm.type === "mindmap"
+              ? "Excluir este mapa mental? Esta ação não pode ser desfeita."
+              : "Excluir esta jornada? Todo o progresso será perdido."
+          }
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
     </aside>
   );
 }
